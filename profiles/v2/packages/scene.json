@@ -1,0 +1,213 @@
+{
+  "gizmos-infos": {
+    "is2D": true,
+    "is3DIcon": false,
+    "iconSize": 2,
+    "gridVisible": true,
+    "gridColor": [
+      166,
+      166,
+      166,
+      255
+    ],
+    "transformToolName": "position",
+    "pivot": "pivot",
+    "coordinate": "local",
+    "toolsVisibility3d": true
+  },
+  "__version__": "1.0.0",
+  "builder": {},
+  "snap-configs": {
+    "position": {
+      "x": 1,
+      "y": 1,
+      "z": 1
+    },
+    "rotation": 1,
+    "scale": 1,
+    "isPositionSnapEnabled": false,
+    "isRotationSnapEnabled": false,
+    "isScaleSnapEnabled": false
+  },
+  "rect-snap-configs": {
+    "enableSnapping": true,
+    "snapThreshold": 4
+  },
+  "camera-infos": {
+    "b50c7e14-8bd2-4bfb-a01d-c0603c8cead7": {
+      "position": {
+        "x": -483.96307956530427,
+        "y": 1560.5538648624943,
+        "z": 5000
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "viewCenter": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "contentRect": {
+        "x": -747.8646617198831,
+        "y": 1296.6522827079154,
+        "width": 100,
+        "height": 100
+      },
+      "scale": 0.1894645708137997
+    },
+    "27ea588d-2e50-4c6d-82a0-bd886adfdac9": {
+      "position": {
+        "x": 556.1085143006976,
+        "y": 1018.4167310990549,
+        "z": 5000
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "viewCenter": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "contentRect": {
+        "x": -1226.282969404244,
+        "y": 89.62712420566115,
+        "width": 1189.8095238095239,
+        "height": 620
+      },
+      "scale": 0.3337677313561732
+    },
+    "ce9dc67d-189f-4e04-82f3-f7f4321e90fe": {
+      "position": {
+        "x": 540,
+        "y": 960,
+        "z": 5000
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "viewCenter": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "contentRect": {
+        "x": -54.904761904761926,
+        "y": 650,
+        "width": 100,
+        "height": 100
+      },
+      "scale": 1
+    },
+    "c77ecaa8-c936-46c4-a5b0-98692673ed87": {
+      "position": {
+        "x": 394.3,
+        "y": 702.1954881656806,
+        "z": 5000
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "viewCenter": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "contentRect": {
+        "x": 0,
+        "y": 0,
+        "width": 328,
+        "height": 583.2189349112426
+      },
+      "scale": 0.970414201183432
+    },
+    "aca8992a-6cd0-46de-aed6-8f84dcbb4934": {
+      "position": {
+        "x": 375.4783102746451,
+        "y": 1007.9882475186702,
+        "z": 5000
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "viewCenter": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "contentRect": {
+        "x": -2110.5009225797266,
+        "y": -287.43517406797486,
+        "width": 1189.8095238095239,
+        "height": 620
+      },
+      "scale": 0.2393039949982605
+    }
+  },
+  "camera-uuids": [
+    "b50c7e14-8bd2-4bfb-a01d-c0603c8cead7",
+    "27ea588d-2e50-4c6d-82a0-bd886adfdac9",
+    "ce9dc67d-189f-4e04-82f3-f7f4321e90fe",
+    "c77ecaa8-c936-46c4-a5b0-98692673ed87",
+    "aca8992a-6cd0-46de-aed6-8f84dcbb4934"
+  ],
+  "camera": {
+    "color": [
+      48,
+      48,
+      48,
+      255
+    ],
+    "fov": 45,
+    "far": 10000,
+    "near": 0.01,
+    "wheelSpeed": 0.01,
+    "wanderSpeed": 10,
+    "enableAcceleration": true,
+    "size": "__default_design__",
+    "far2D": 10000,
+    "near2D": 1,
+    "wheelSpeed2D": 6,
+    "iso": 0,
+    "aperture": 19,
+    "shutter": 7
+  },
+  "scene_view": {
+    "isSceneLightOn": true,
+    "output_device": "__default_design__"
+  },
+  "game-view": {
+    "scaleValue": 31,
+    "sliderValue": 11,
+    "fullScreen": true
+  },
+  "float-window": {
+    "position": {
+      "cc": {
+        "Camera": {
+          "dock": false,
+          "top": null,
+          "bottom": 10,
+          "left": null,
+          "right": 10
+        }
+      }
+    }
+  }
+}
