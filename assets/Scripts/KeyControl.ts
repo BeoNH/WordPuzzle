@@ -11,6 +11,7 @@ export class KeyControl extends Component {
 
     private keyCodeString: string = 'QWERTYUIOPASDFGHJKLZXCVBNM';
     private targetBox: Node = null;
+    private txtBox = ' ';
 
     onLoad() {
         KeyControl.Instance = this;
@@ -30,22 +31,32 @@ export class KeyControl extends Component {
     }
 
     // Chọn ô đáp án
-    clickBox(event: EventTouch){
-        if (event?.currentTarget) {
-            this.targetBox = event.currentTarget as Node;
-            console.log("Node được click:", this.targetBox.name);
+    clickBox(currentTarget?: Node) {
+        if (currentTarget) {
+            this.targetBox = currentTarget as Node;
+            console.log("Node được click:", this.targetBox.name, "/", this.targetBox['keyCode']);
         }
     }
 
     // Điền đáp án
-    fillTxtBox(txt: string){
-        if(this.targetBox){
+    fillTxtBox(txt: string) {
+        if (this.targetBox) {
             this.targetBox.getChildByPath(`Label`).getComponent(Label).string = txt;
+            this.txtBox = txt;
         }
     }
 
     // Xác nhận đáp án
-    confirmBox(){
+    confirmBox() {
+        if (this.targetBox && this.targetBox['keyCode']) {
+            if (this.txtBox !== this.targetBox['keyCode']) {
+                // Sai
+                this.fillTxtBox(null);
+            } else {
+                //Chính xác
+                this.targetBox.off(`click`);
+            }
+        }
         this.targetBox = null;
     }
 }
