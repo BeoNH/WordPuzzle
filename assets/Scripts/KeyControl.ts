@@ -1,5 +1,6 @@
 import { _decorator, Component, EventTouch, Label, Node } from 'cc';
 import { KeyCode } from './KeyCode';
+import { WordPuzzle } from './WordPuzzle';
 const { ccclass, property } = _decorator;
 
 @ccclass('KeyControl')
@@ -32,9 +33,12 @@ export class KeyControl extends Component {
 
     // Chọn ô đáp án
     clickBox(currentTarget?: Node) {
+        if(this.targetBox && this.txtBox){
+            this.confirmBox();
+        }
         if (currentTarget) {
             this.targetBox = currentTarget as Node;
-            console.log("Node được click:", this.targetBox.name, "/", this.targetBox['keyCode']);
+            // console.log("Node được click:", this.targetBox.name, "/", this.targetBox['keyCode']);
         }
     }
 
@@ -52,9 +56,12 @@ export class KeyControl extends Component {
             if (this.txtBox !== this.targetBox['keyCode']) {
                 // Sai
                 this.fillTxtBox(null);
+                WordPuzzle.Instance.onWrongInput();
             } else {
                 //Chính xác
                 this.targetBox.off(`click`);
+                WordPuzzle.Instance.checkLetters(this.txtBox);
+                WordPuzzle.Instance.checkCompletedWord(this.targetBox);
             }
         }
         this.targetBox = null;

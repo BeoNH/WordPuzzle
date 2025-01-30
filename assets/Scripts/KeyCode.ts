@@ -23,7 +23,7 @@ export class KeyCode extends Component {
     onClick() {
         console.log("Nút: ", this.defaultTxt);
         if(this.isBackSpace){
-
+            KeyControl.Instance.fillTxtBox(null);
         }else{
             KeyControl.Instance.fillTxtBox(this.defaultTxt);
         }
