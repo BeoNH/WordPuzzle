@@ -33,8 +33,10 @@ export class GameControl extends Component {
     }
 
     openGame() {
-        this.sceneMenu.active = false;
-        this.scenePlay.active = true;
+        this.scheduleOnce(()=>{
+            this.sceneMenu.active = false;
+            this.scenePlay.active = true;
+        },0.3)
     }
 }
 

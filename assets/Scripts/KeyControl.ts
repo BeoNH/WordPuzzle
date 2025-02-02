@@ -33,12 +33,15 @@ export class KeyControl extends Component {
 
     // Chọn ô đáp án
     clickBox(currentTarget?: Node) {
-        if(this.targetBox && this.txtBox){
+        if(this.txtBox){
             this.confirmBox();
         }
         if (currentTarget) {
             this.targetBox = currentTarget as Node;
             // console.log("Node được click:", this.targetBox.name, "/", this.targetBox['keyCode']);
+        }else{
+            this.targetBox=null;
+            this.txtBox=null;
         }
     }
 

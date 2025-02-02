@@ -1,6 +1,7 @@
-import { _decorator, Button, Color, Component, EventHandle, EventHandler, instantiate, Label, Layout, Node, Prefab, Sprite } from 'cc';
+import { _decorator, BitmapFont, Button, Color, Component, EventHandle, EventHandler, instantiate, Label, Layout, Node, Prefab, Sprite, tween, Vec3 } from 'cc';
 import { GameManager } from './GameManager';
 import { KeyControl } from './KeyControl';
+import { Box } from './Box';
 const { ccclass, property } = _decorator;
 
 @ccclass('WordPuzzle')
@@ -21,6 +22,9 @@ export class WordPuzzle extends Component {
 
     @property({ type: Node, tooltip: "Ma trận từ cần tìm" })
     protected layoutTargetWord: Node = null;
+
+    @property({ type: Node, tooltip: "Bàn phím ảo" })
+    protected Keyboard: Node = null;
 
     @property({ type: Prefab, tooltip: "Hộp chứa từ" })
     protected targetBox: Prefab = null;
@@ -77,7 +81,7 @@ export class WordPuzzle extends Component {
             let letter = instantiate(this.targetBox);
 
             letter.name = `Letter_${i}`;
-            letter.getChildByPath(`BG`).getComponent(Sprite).color = new Color().fromHEX('#A5CCA0');
+            letter.getComponent(Box).chanceImage(1);
             letter.getChildByPath(`Label`).getComponent(Label).string = item;
             letter[`keyCode`] = item;
             letter.off(`click`);
@@ -120,11 +124,11 @@ export class WordPuzzle extends Component {
                 let charNode = instantiate(this.targetBox);
                 charNode.name = `${this.targetBox.name}_${i}_${j}`;
                 charNode.parent = row;
-                let bgNode = charNode.getChildByPath(`BG`);
 
                 if (char !== ' ') {
+                    charNode.getComponent(Box).chanceImage(0);
                     if (j == GameManager.data.keyAnswer) {
-                        bgNode.getComponent(Sprite).color = new Color().fromHEX('#E4E195');
+                        charNode.getComponent(Box).chanceImage(2);
                     }
                     charNode['keyCode'] = char;
                     charNode['pos'] = [i, j];
@@ -132,10 +136,11 @@ export class WordPuzzle extends Component {
                     charNode.on(`click`, () => {
                         if (!this.isGameover) {
                             KeyControl.Instance.clickBox(charNode);
+                            this.moveKeyboard("up");
                         }
                     });
                 } else {
-                    bgNode.active = false;
+                    charNode.getChildByPath(`BG`).active = false;
                 }
             }
         }
@@ -198,25 +203,27 @@ export class WordPuzzle extends Component {
             return;
         }
 
+        // chuyển trạng thái đáp án
         this.layoutAllLetters.forEach(layout => {
             layout.children.forEach(e => {
                 if (e['keyCode'] === txt) {
-                    const label = e.getChildByPath(`Label`).getComponent(Label);
-                    if (label.string.trim() === "") {
-                        label.string = txt;
-                    }
+                    e.getComponent(Box).chanceImage(0);
+                    e.getComponent(Button).destroy();
+                    e.off(`click`);
                 }
             });
         });
 
+        // chuyển trạng thái câu trả lời
         this.layoutTargetWord.children.forEach(layout => {
             layout.children.forEach(e => {
                 if (e['keyCode'] === txt) {
                     const label = e.getChildByPath(`Label`).getComponent(Label);
                     if (label.string.trim() === "") {
                         label.string = txt;
-                        e.off(`click`);
                     }
+                    e.getComponent(Button).destroy();
+                    e.off(`click`);
                 }
             });
         });
@@ -266,6 +273,24 @@ export class WordPuzzle extends Component {
 
         this.numScore += bonus;
         this.updateScoreLabel();
+    }
+
+    // Di chuyển bàn phím ảo khi cần
+    moveKeyboard(active: string) {
+        const currentPos = this.Keyboard.position;
+        let targetPos: Vec3;
+
+        if (active == "up") {
+            targetPos = new Vec3(0, 0, 0);
+        } else {
+            targetPos = new Vec3(0, -700, 0);
+        }
+
+        if(currentPos != targetPos){
+            tween(this.Keyboard)
+            .to(0.1, {position: targetPos})
+            .start();
+        }
     }
 }
 
