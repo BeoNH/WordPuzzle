@@ -2,6 +2,7 @@ import { _decorator, BitmapFont, Button, Color, Component, EventHandle, EventHan
 import { GameManager } from './GameManager';
 import { KeyControl } from './KeyControl';
 import { Box } from './Box';
+import { popupGameOver } from './popupGameOver';
 const { ccclass, property } = _decorator;
 
 @ccclass('WordPuzzle')
@@ -29,6 +30,8 @@ export class WordPuzzle extends Component {
     @property({ type: Prefab, tooltip: "Hộp chứa từ" })
     protected targetBox: Prefab = null;
 
+    @property({ type: Node, tooltip: "UI Hoàn thành game" })
+    protected popupGameOver: Node = null;
 
     private isGameover: boolean = false;
     private numTime;
@@ -37,15 +40,13 @@ export class WordPuzzle extends Component {
 
     onLoad(): void {
         WordPuzzle.Instance = this;
-
-        this.resetGame();
     }
 
     start() {
 
     }
 
-    update(deltaTime: number) {
+    update(dt: number) {
 
     }
 
@@ -57,7 +58,7 @@ export class WordPuzzle extends Component {
         this.numScore = GameManager.data.max_score;
         this.questionLabel.string = GameManager.data.question;
         this.isGameover = false;
-
+        this.popupGameOver.active = false;
 
         this.generateAllLetter();
         this.generateMatrix();
@@ -87,7 +88,10 @@ export class WordPuzzle extends Component {
             letter.off(`click`);
             letter.on(`click`, () => {
                 if (!this.isGameover) {
+                    KeyControl.Instance.clickBox();
                     this.checkLetters(item);
+                    this.numScore += GameManager.hintKey;
+                    this.updateScoreLabel();
                 }
             });
 
@@ -169,7 +173,8 @@ export class WordPuzzle extends Component {
 
     // Cập nhật số điểm
     private updateScoreLabel() {
-        this.scoreLabel.string = `${this.numScore}`;
+        let num = this.numScore >= 0 ? this.numScore : 0;
+        this.scoreLabel.string = `${num}`;
     }
 
     // Cập nhật thời gian
@@ -179,9 +184,16 @@ export class WordPuzzle extends Component {
         this.timeLabel.string = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
     }
 
+    // Kết thúc game
     private endGame() {
         clearInterval(this.timeInterval);
         this.isGameover = true;
+        this.openAllAnswer();
+        this.scheduleOnce(() => {
+            this.popupGameOver.getComponent(popupGameOver).init(this.numTime, this.numScore);
+            this.popupGameOver.active = true;
+        }, 1);
+
         console.log("Game kết thúc!");
 
         // Gửi điểm lên server
@@ -203,18 +215,21 @@ export class WordPuzzle extends Component {
             return;
         }
 
-        // chuyển trạng thái đáp án
+        // chuyển trạng thái gợi ý
         this.layoutAllLetters.forEach(layout => {
             layout.children.forEach(e => {
                 if (e['keyCode'] === txt) {
                     e.getComponent(Box).chanceImage(0);
-                    e.getComponent(Button).destroy();
                     e.off(`click`);
+                    const btn = e.getComponent(Button);
+                    if (btn) {
+                        btn.destroy();
+                    }
                 }
             });
         });
 
-        // chuyển trạng thái câu trả lời
+        // chuyển trạng thái đáp án
         this.layoutTargetWord.children.forEach(layout => {
             layout.children.forEach(e => {
                 if (e['keyCode'] === txt) {
@@ -222,57 +237,66 @@ export class WordPuzzle extends Component {
                     if (label.string.trim() === "") {
                         label.string = txt;
                     }
-                    e.getComponent(Button).destroy();
+
                     e.off(`click`);
+                    const btn = e.getComponent(Button);
+                    if (btn) {
+                        btn.destroy();
+                    }
+
+                    this.checkCompletedWord(e, false);
                 }
             });
         });
     }
 
     // Kiểm tra hoàn thành từ
-    checkCompletedWord(taget: Node) {
+    checkCompletedWord(taget: Node, isBonus: boolean = true) {
+        if (!taget[`pos`]) return;
+
         let bonus = 0;
-        let target = taget;
+        let rowComplete = true;
+        let colComplete = true;
+        const [row, col] = taget[`pos`];
 
-        if (target[`pos`]) {
-            const [row, col] = target[`pos`];
-            let rowComplete = true;
-            let colComplete = true;
-
-            // Kiểm tra hàng (row)
-            const rowNodes = this.layoutTargetWord.children[row].children;
-            rowNodes.forEach(node => {
-                const text = node.getChildByPath(`Label`).getComponent(Label).string.trim();
-                if (!text && node[`keyCode`]) {
-                    rowComplete = false;
-                    return;
-                }
-            })
-
-            if (rowComplete) {
-                bonus += GameManager.psecondaryKey;
+        // Kiểm tra hàng (row)
+        const rowNodes = this.layoutTargetWord.children[row]?.children;
+        rowNodes.forEach(node => {
+            const text = node.getChildByPath(`Label`).getComponent(Label).string.trim();
+            if (!text && node[`keyCode`]) {
+                rowComplete = false;
+                return;
             }
+        })
+
+        if (rowComplete) {
+            bonus += GameManager.psecondaryKey;
+        }
 
 
-            // Kiểm tra cột (col)
-            if (col === GameManager.data.keyAnswer) {
-                this.layoutTargetWord.children.forEach(layout => {
-                    const colNode = layout.children[col];
-                    const text = colNode.getChildByPath(`Label`).getComponent(Label).string.trim();
-                    if (!text && colNode[`keyCode`]) {
-                        colComplete = false;
-                    }
-                });
-
-                if (colComplete) {
-                    bonus += GameManager.primaryKey;
-                    this.endGame();
+        // Kiểm tra cột (col)
+        if (col === GameManager.data.keyAnswer) {
+            this.layoutTargetWord.children.forEach(layout => {
+                const colNode = layout.children[col];
+                const text = colNode.getChildByPath(`Label`).getComponent(Label).string.trim();
+                if (!text && colNode[`keyCode`]) {
+                    colComplete = false;
                 }
+            });
+
+            if (colComplete) {
+                bonus += GameManager.primaryKey;
             }
         }
 
-        this.numScore += bonus;
-        this.updateScoreLabel();
+        if (isBonus) {
+            this.numScore += bonus;
+            this.updateScoreLabel();
+        }
+
+        if (col === GameManager.data.keyAnswer && colComplete) {
+            this.endGame();
+        }
     }
 
     // Di chuyển bàn phím ảo khi cần
@@ -286,11 +310,30 @@ export class WordPuzzle extends Component {
             targetPos = new Vec3(0, -700, 0);
         }
 
-        if(currentPos != targetPos){
+        if (currentPos != targetPos) {
             tween(this.Keyboard)
-            .to(0.1, {position: targetPos})
-            .start();
+                .to(0.1, { position: targetPos })
+                .start();
         }
+    }
+
+    // Mở toàn bộ đáp án
+    openAllAnswer() {
+        this.layoutTargetWord.children.forEach(layout => {
+            layout.children.forEach(e => {
+                if (e['keyCode']) {
+                    const label = e.getChildByPath(`Label`).getComponent(Label);
+                    if (label.string.trim() === "") {
+                        label.string = e['keyCode'];
+                    }
+                    const btn = e.getComponent(Button);
+                    if (btn) {
+                        btn.destroy();
+                    }
+                    e.off(`click`);
+                }
+            });
+        });
     }
 }
 
