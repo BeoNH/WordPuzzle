@@ -1,6 +1,8 @@
 import { _decorator, Color, Component, Label, Node, Sprite, instantiate } from 'cc';
 import { KeyCode } from './KeyCode';
 import { WordPuzzle } from './WordPuzzle';
+import { AudioController } from './AudioController';
+import { Box } from './Box';
 const { ccclass, property } = _decorator;
 
 @ccclass('KeyControl')
@@ -31,32 +33,35 @@ export class KeyControl extends Component {
         }
     }
 
-    // Hàm cập nhật độ mờ (opacity) cho BG của một box
-    private updateBoxOpacity(box: Node, alpha: number): void {
-        const bgNode = box.getChildByPath('BG');
-        if (bgNode) {
-            const sprite = bgNode.getComponent(Sprite);
-            if (sprite) {
-                const { r, g, b } = sprite.color;
-                sprite.color = new Color(r, g, b, alpha);
-            }
-        }
+    // Hàm cập nhật hình ảnh cho BG của một box
+    private updateBoxImage(box: Node, onBox: boolean): void {
+        if(!box) return;
+
+        const [row, col] = box['pos'];
+        const keyAnswer = WordPuzzle.Instance.gameData.keyAnswer;
+        const isKeyColumn = (col === keyAnswer);
+
+        // Xác định imageIndex dựa trên trạng thái onBox và vị trí key
+        const imageIndex = onBox ? (isKeyColumn ? 4 : 3) : (isKeyColumn ? 2 : 0);
+
+        box.getComponent(Box).chanceImage(imageIndex);
     }
+
 
     // Xử lý khi người chơi click vào ô đáp án
     clickBox(currentTarget?: Node) {
         if (this.currentText) {
-            this.confirmBox();
+            this.confirmBox(false);
         }
 
         if (this.targetBox) {
-            this.updateBoxOpacity(this.targetBox, 255);
+            this.updateBoxImage(this.targetBox, false);
         }
 
         if (currentTarget) {
             this.targetBox = currentTarget;
-            this.updateBoxOpacity(this.targetBox, 200);
-            console.log("Code: ",currentTarget['keyCode'])
+            this.updateBoxImage(this.targetBox, true);
+            // console.log("Code: ",currentTarget['keyCode'])
         } else {
             this.targetBox = null;
             this.currentText = '';
@@ -75,21 +80,32 @@ export class KeyControl extends Component {
     }
 
     // Xác nhận đáp án đã điền vào ô
-    confirmBox() {
+    confirmBox(isNext: boolean = true) {
         if (this.targetBox && this.targetBox['keyCode']) {
-            this.updateBoxOpacity(this.targetBox, 255);
+            this.updateBoxImage(this.targetBox, false);
 
-            if (this.currentText !== this.targetBox['keyCode']) {
-                this.fillTxtBox('');
-                WordPuzzle.Instance.onWrongInput();
-            } else {
-                this.targetBox.off('click');
-                WordPuzzle.Instance.checkLetters(this.currentText);
-                WordPuzzle.Instance.checkCompletedWord(this.targetBox);
+            console.log("currentText: ",this.currentText)
+            if(this.currentText){
+                if (this.currentText !== this.targetBox['keyCode']) {
+                    AudioController.Instance.WrongWord();
+                    this.fillTxtBox('');
+                    WordPuzzle.Instance.onWrongInput(this.targetBox);
+                } else {
+                    AudioController.Instance.RightWord();
+                    this.targetBox.off('click');
+                    WordPuzzle.Instance.checkWordFillFull(this.currentText);
+                    WordPuzzle.Instance.checkCompletedWord(this.targetBox);
+                }
             }
         }
         // Reset trạng thái sau khi xác nhận
-        this.targetBox = null;
         this.currentText = '';
+        if (isNext) {
+            let nextBox = WordPuzzle.Instance.getkNextWord(this.targetBox);
+            this.targetBox = nextBox;
+            this.updateBoxImage(this.targetBox, true);
+        } else {
+            this.targetBox = null;
+        }
     }
 }

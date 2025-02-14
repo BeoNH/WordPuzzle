@@ -1,4 +1,5 @@
 import { _decorator, Component, Label, Node } from 'cc';
+import { UIControl } from './UIControl';
 const { ccclass, property } = _decorator;
 
 @ccclass('popupGameOver')
@@ -13,6 +14,7 @@ export class popupGameOver extends Component {
     init(time: string, score) {
         this.numTime.string = time + "s";
         this.numScore.string = score >= 0 ? score : 0;
+        UIControl.instance.onClose();
     }
 
     protected onDisable(): void {
