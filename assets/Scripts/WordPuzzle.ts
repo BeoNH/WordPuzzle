@@ -1,9 +1,9 @@
-import { _decorator, Animation, BitmapFont, Button, Color, Component, EventHandle, EventHandler, find, instantiate, Label, Layout, Node, Prefab, Sprite, tween, v3, Vec3 } from 'cc';
+import { _decorator, Animation, BitmapFont, Button, Color, Component, EventHandle, EventHandler, EventTouch, find, instantiate, Label, Layout, Node, Prefab, Quat, Sprite, tween, v3, Vec3 } from 'cc';
 import { GameManager } from './GameManager';
 import { KeyControl } from './KeyControl';
 import { Box } from './Box';
 import { popupGameOver } from './popupGameOver';
-import { APIManager } from './API_batta/APIManager';
+import { APIManager, SERVICE_ASSETS } from './API_batta/APIManager';
 import { AudioController } from './AudioController';
 import { UIControl } from './UIControl';
 import { GameControl } from './GameControl';
@@ -32,7 +32,10 @@ export class WordPuzzle extends Component {
     protected layoutTargetWord: Node = null;
 
     @property({ type: Node, tooltip: "Danh sách các nút âm thanh gợi ý" })
-    protected soundPanel: Node = null;
+    protected soundOff: Node = null;
+
+    @property({ type: Node, tooltip: "Danh sách các nút âm thanh gợi ý" })
+    protected soundOn: Node = null;
 
     @property({ type: Prefab, tooltip: "Nút phát âm thanh" })
     protected soundItem: Prefab = null;
@@ -46,6 +49,15 @@ export class WordPuzzle extends Component {
     @property({ type: Node, tooltip: "UI Hoàn thành game" })
     protected popupGameOver: Node = null;
 
+    @property({ type: Node, tooltip: "Nút bấm các vật phẩm 1" })
+    protected iconItem1: Node = null;
+
+    @property({ type: Node, tooltip: "Nút bấm các vật phẩm 2" })
+    protected iconItem2: Node = null;
+
+    @property({ type: Node, tooltip: "Nút bấm các vật phẩm 3" })
+    protected iconItem3: Node = null;
+
     private isGameover: boolean = false;
     private numTime;
     private numScore;
@@ -55,8 +67,16 @@ export class WordPuzzle extends Component {
     private mapNode: Node; // Map chứa thành phần game
 
     private dataSound: { words: string[], keyWord: string }; //Data chứa từ cần phát âm
-    private wordReaded: string[];
+    private wordReaded: string[]; // Từ đã được đọc 1 lần
 
+    // Bộ 3 vật phẩm
+    private onItem1: boolean = false;
+    private onItem2: boolean = false;
+    private onItem3: boolean = false;
+    private numItemUse: number[] = [0, 0, 0]; // Số lần dùng item
+    private save: number[];
+
+    private comboWords: number = 0;
 
     onLoad(): void {
         WordPuzzle.Instance = this;
@@ -69,43 +89,111 @@ export class WordPuzzle extends Component {
     }
 
     update(dt: number) {
-
+        this.updateItemUI()
     }
 
-    //Khởi tạo lại game
-    resetGame() {
-        this.gameData = GameManager.data;
-        APIManager.requestData(`GET`, `/api/suggestions`, null, res => {
-            // if (!res) {
-            //     UIControl.instance.onMess(`Loading game data failed \n. . .`);
-            //     GameControl.Instance.openMenu();
-            //     return;
-            // }
-            // this.gameData = res ? res : GameManager.data;
-            this.isDefault = res ? false : true;
+    // Cập nhật giao diện vật phẩm
+    updateItemUI() {
+        this.soundOff.active = this.onItem1;
+        this.iconItem1.getComponent(Sprite).grayscale = this.numItemUse[0] <= 0;
+        this.iconItem2.getComponent(Sprite).grayscale = this.numItemUse[1] <= 0;
+        this.iconItem3.getComponent(Sprite).grayscale = this.numItemUse[2] <= 0;
 
-            this.layoutTargetWord.removeAllChildren();
-            this.soundPanel.removeAllChildren();
-            this.layoutAllLetters.forEach(e => { e.removeAllChildren(); e.active = false });
+        this.iconItem1.children[0].getComponent(Label).string = `x${this.numItemUse[0]}`;
+        this.iconItem2.children[0].getComponent(Label).string = `x${this.numItemUse[1]}`;
+        this.iconItem3.children[0].getComponent(Label).string = `x${this.numItemUse[2]}`;
+    }
+
+    // Khởi tạo lại game
+    resetGame() {
+        APIManager.requestData(`GET`, `/api/suggestions`, null, res => {
+            if (!res) {
+                UIControl.instance.onMess(`Loading game data failed \n. . .`);
+                GameControl.Instance.openMenu();
+                return;
+            }
+
+            // Cập nhật dữ liệu game
+            this.gameData = res ? res : GameManager.data;
+            this.isDefault = !res;
+
+            // Đặt lại trạng thái game
+            this.isGameover = false;
+            this.popupGameOver.active = false;
             this.wordReaded = [];
             this.numTime = this.gameData.countdown;
             this.numScore = this.gameData.max_score;
-            this.questionKeyLabel.string = this.gameData.question;
-            this.questionRowLabel.string = `${1}. ${this.gameData.questionRow[0]}`;
-            this.isGameover = false;
-            this.popupGameOver.active = false;
-            this.dataSound = this.extractGridToWords(this.gameData.answer, this.gameData.keyAnswer);
+            this.numItemUse = [2, 2, 2];
+            this.comboWords = 0;
 
+            // Reset giao diện layout
+            this.resetUILayout();
+
+            // Xử lý item âm thanh
+            this.dataSound = this.extractGridToWords(this.gameData.answer, this.gameData.keyAnswer);
+            this.OffAllItem();
+
+            // Tạo lại dữ liệu game
             this.generateAllLetter();
             this.generateMatrix();
 
+            // Bắt đầu game và phát âm thanh
             this.startGame();
-
             AudioController.Instance.StartGame();
-        })
+        });
     }
 
-    // Tạo chuỗi các ký tự đáp án
+    //======================= BỘ KHỞI TẠO =========================//
+
+    // Reset toàn bộ giao diện UI
+    private resetUILayout() {
+        this.layoutTargetWord.removeAllChildren();
+        this.soundOn.removeAllChildren();
+        this.soundOff.removeAllChildren();
+        this.soundOff.active = this.onItem1;
+
+        this.layoutAllLetters.forEach(e => {
+            e.removeAllChildren();
+            e.active = false;
+        });
+
+        // Cập nhật UI câu hỏi
+        this.questionKeyLabel.string = this.gameData.question;
+        this.questionRowLabel.string = `${1}. ${this.gameData.questionRow[0]}`;
+    }
+
+    // Tách ghép các đáp án hàng vs cột thành từ có nghĩa
+    private extractGridToWords(grid: string[][], keyColumn: number) {
+        const words = grid.map(row => row.filter(char => char !== ' ').join(''));
+        const keyWord = grid
+            .map(row => row[keyColumn])
+            .filter(char => char !== ' ')
+            .join('');
+
+        return { words, keyWord };
+    }
+
+    // Tắt toàn bộ các Item
+    private OffAllItem() {
+        this.onItem1 = this.onItem2 = this.onItem3 = false;
+        [this.iconItem1, this.iconItem2, this.iconItem3].forEach(icon => this.stopAnimation(icon));
+
+        this.layoutAllLetters.forEach(layout => {
+            layout.children.forEach(child => {
+                this.stopAnimation(child);
+            });
+        });
+
+        this.layoutTargetWord.children.forEach(layout => {
+            layout.children.forEach(child => {
+                this.stopAnimation(child);
+            });
+        });
+    }
+
+
+
+    // Tạo chuỗi các ký tự gợi ý
     private generateAllLetter() {
         if (!this.layoutAllLetters || this.layoutAllLetters.length === 0) {
             console.error("layoutAllLetters chưa được thiết lập!");
@@ -115,24 +203,19 @@ export class WordPuzzle extends Component {
         // tính chia đều cho các hàng
         // const lettersPerRow = Math.ceil(this.gameData.all_letter.length / this.layoutAllLetters.length);
         const lettersPerRow = 7;
-
         AudioController.Instance.OpenWord();
+
         for (let i = 0; i < this.gameData.all_letter.length; i++) {
             let item = this.gameData.all_letter[i];
-            let letter = instantiate(this.targetBox);
 
+            let letter = instantiate(this.targetBox);
             letter.name = `Letter_${i}`;
+            letter[`keyCode`] = item;
             letter.getComponent(Box).chanceImage(1);
             letter.getChildByPath(`Label`).getComponent(Label).string = item;
-            // letter.scale = v3(0.01, 0.01, 0.01);
-            letter[`keyCode`] = item;
+
             letter.off(`click`);
-            letter.on(`click`, () => {
-                if (!this.isGameover) {
-                    KeyControl.Instance.clickBox();
-                    this.checkLetters(letter, item);
-                }
-            });
+            letter.on(`click`, () => this.handleLetterClick(letter, item));
 
             // Chạy hiệu ứng
             this.scheduleOnce(() => {
@@ -144,7 +227,6 @@ export class WordPuzzle extends Component {
             letter.parent = this.layoutAllLetters[rowIndex];
         }
     }
-
 
     // Tạo mảng 2 chiều đáp án
     private generateMatrix() {
@@ -160,11 +242,11 @@ export class WordPuzzle extends Component {
             const row = new Node(`${i}`);
             row.parent = this.layoutTargetWord;
 
-            // Tạo từng hàng -> cấu hình phần tử trong hàng -> Thêm gợi ý ? đầu hàng -> Thêm âm thanh gợi ý
+            // Tạo từng hàng -> cấu hình phần tử trong hàng -> Thêm gợi ý ? đầu hàng -> Thêm âm thanh gợi ý cuối hàng
             this.setupRowLayout(row);
             this.createBoxesForRow(row, itemRow, i);
             this.setupQuestBoxForRow(row, itemRow, i);
-            this.setupSoundBoxForRow(row, itemRow, i);
+            this.setupHintSound(row, itemRow, i);
         }
 
         // Scale theo số lượng dòng
@@ -197,22 +279,13 @@ export class WordPuzzle extends Component {
 
             if (char.trim() !== '') {
                 // Thiết lập hình ảnh cho box theo ký tự
-                charNode.getComponent(Box).chanceImage(0);
-                if (j === this.gameData.keyAnswer) {
-                    charNode.getComponent(Box).chanceImage(2);
-                }
+                const boxComponent = charNode.getComponent(Box);
+                boxComponent.chanceImage(j === this.gameData.keyAnswer ? 2 : 0);
 
                 charNode['keyCode'] = char;
                 charNode['pos'] = [rowIndex, j];
                 charNode.off('click');
-                charNode.on('click', () => {
-                    if (!this.isGameover) {
-                        KeyControl.Instance.clickBox(charNode);
-                        this.questionRowLabel.string = `${rowIndex + 1}. ${this.gameData.questionRow[rowIndex]}`;
-                        this.moveKeyboard("up");
-                    }
-                });
-
+                charNode.on('click', () => this.handleWordClick(charNode, rowIndex));
             } else {
                 // Ẩn background nếu ký tự là khoảng trắng
                 const bgNode = charNode.getChildByPath('BG');
@@ -225,16 +298,10 @@ export class WordPuzzle extends Component {
 
     // Thiết lập box cho nút "?"
     private setupQuestBoxForRow(row: Node, itemRow: string[], rowIndex: number): void {
-        let firstNonIndex = -1;
-        for (let i = 1; i < itemRow.length; i++) {
-            if (itemRow[i].trim() !== '') {
-                firstNonIndex = i - 1;
-                break;
-            }
-        }
+        let firstNonIndex = itemRow.findIndex(char => char.trim() !== '');
 
-        if (firstNonIndex >= 0 && row.children[firstNonIndex]) {
-            const questNode = row.children[firstNonIndex];
+        if (firstNonIndex >= 0 && row.children[firstNonIndex - 1]) {
+            const questNode = row.children[firstNonIndex - 1];
             const quest = questNode.getChildByPath('Quest');
             const numQuest = questNode.getChildByPath('numQuest');
 
@@ -254,7 +321,7 @@ export class WordPuzzle extends Component {
     }
 
     // Thiết lập âm thanh gợi ý
-    private setupSoundBoxForRow(row: Node, itemRow: string[], rowIndex: number): void {
+    private setupHintSound(row: Node, itemRow: string[], rowIndex: number): void {
         let lastIndex = -1;
         for (let i = itemRow.length - 1; i >= 0; i--) {
             if (itemRow[i].trim() !== '') {
@@ -262,90 +329,105 @@ export class WordPuzzle extends Component {
                 break;
             }
         }
+        console.log(">>>firstNonIndex", lastIndex);
+
+
         this.scheduleOnce(() => {
+            // Âm thanh theo dòng
             if (lastIndex >= 0 && row.children[lastIndex]) {
-                let item = instantiate(this.soundItem);
-                item.name = `${item.name}_${rowIndex}`;
-                item.parent = this.soundPanel;
-                item.worldPosition = row.children[lastIndex].worldPosition.clone();
-                item.position.add(v3(80, -5, 0));
+                this.createSoundHint(row.children[lastIndex], this.dataSound.words[rowIndex]);
+            }
 
-                item.off('click');
-                item.on('click', () => {
-                    if (!this.isGameover) {
-                        const currentWord = this.dataSound.words[rowIndex];
-                        this.onReadWord(currentWord);
-
-                        // Kiểm tra nếu currentWord chưa có trong wordReaded
-                        if (this.wordReaded.indexOf(currentWord) === -1) {
-                            this.wordReaded.push(currentWord);
-                            //trừ điểm khi mở gợi ý
-                            this.numScore += GameManager.hintSound;
-                            this.updateScoreLabel(GameManager.hintSound, item);
-                            item.getComponent(Sprite).grayscale = false;
-                        }
-                    }
-                });
-
-                if (rowIndex === (this.gameData.answer.length - 1)) {
-                    let item2 = instantiate(this.soundItem);
-                    item2.name = `${item2.name}_Key`;
-                    item2.parent = this.soundPanel;
-                    item2.worldPosition = row.children[this.gameData.keyAnswer].worldPosition.clone();
-                    item2.position.add(v3(0, -80, 0));
-
-                    item2.off('click');
-                    item2.on('click', () => {
-                        if (!this.isGameover) {
-                            const currentWord = this.dataSound.keyWord;
-                            this.onReadWord(currentWord);
-
-                            // Kiểm tra nếu currentWord chưa có trong wordReaded
-                            if (this.wordReaded.indexOf(currentWord) === -1) {
-                                this.wordReaded.push(currentWord);
-                                //trừ điểm khi mở gợi ý
-                                this.numScore += GameManager.hintSound;
-                                this.updateScoreLabel(GameManager.hintSound, item2);
-                                item2.getComponent(Sprite).grayscale = false;
-                            }
-                        }
-                    });
+            // Âm thanh cột chính
+            if (rowIndex === (this.gameData.answer.length - 1)) {
+                let keyBox = row.children[this.gameData.keyAnswer - 1];
+                if (keyBox) {
+                    this.createSoundHint(keyBox, this.dataSound.keyWord, true);
                 }
             }
         }, 0.001)
-
     }
 
+    // Tạo gợi ý âm thanh
+    private createSoundHint(target: Node, word: string, iskey: boolean = false) {
+        let item = instantiate(this.soundItem);
+        item.name = `${item.name}_${word}`;
+        item.parent = this.soundOff;
+        item.worldPosition = target.worldPosition.clone();
+        item.position.add(v3(80, -5, 0));
+        if (iskey) {
+            item.position.add(v3(0, -80, 0));
+        }
+
+        item.off('click');
+        item.on('click', () => this.handleSoundHintClick(item, word));
+    }
+
+    // Mở toàn bộ đáp án
+    // private openAllAnswer() {
+    //     this.layoutTargetWord.children.forEach(layout => {
+    //         layout.children.forEach(e => {
+    //             if (e['keyCode']) {
+    //                 const label = e.getChildByPath(`Label`).getComponent(Label);
+    //                 if (label.string.trim() === "") {
+    //                     label.string = e['keyCode'];
+    //                 }
+    //                 const btn = e.getComponent(Button);
+    //                 if (btn) {
+    //                     btn.destroy();
+    //                 }
+    //                 e.off(`click`);
+    //             }
+    //         });
+    //     });
+    // }
+
+
+    //======================= BỘ VẬN HÀNH =========================//
+
+
     // Bộ đếm ngược
-    private timeInterval: number = null;
+    private lastTimestamp: number = 0; // Biến lưu trữ thời điểm cập nhật cuối cùng (tính theo mili-giây)
+    private gameTimer() {
+        const now = Date.now();
+        const deltaTime = (now - this.lastTimestamp) / 1000;
+
+        this.lastTimestamp = now;
+
+        // Giảm thời gian đếm ngược theo khoảng thời gian thực đã trôi qua
+        this.numTime -= Math.floor(deltaTime);
+        // Trừ điểm mỗi 5 giây
+        // if (this.numTime % GameManager.timeStep === 0) {
+        //     this.numScore += GameManager.timeScore;
+        //     this.updateScoreLabel();
+        // }
+        
+        if (this.numTime <= 0 || this.numScore <= 0) {
+            // this.numScore = 0;
+            this.numTime = 0;
+            this.endGame();
+        }
+        
+        this.updateTimeLabel();
+    }
+
     startGame() {
         this.updateScoreLabel();
         this.updateTimeLabel();
 
-        this.timeInterval = setInterval(() => {
-            this.numTime -= 1;
-            // Trừ điểm mỗi 5 giây
-            // if (this.numTime % GameManager.timeStep === 0) {
-            //     this.numScore += GameManager.timeScore;
-            //     this.updateScoreLabel();
-            // }
+        this.lastTimestamp = Date.now();
 
-            this.updateTimeLabel();
-
-            if (this.numTime <= 0 || this.numScore <= 0) {
-                this.numScore = 0;
-                this.endGame();
-            }
-        }, 1000);
+        this.schedule(this.gameTimer, 1);
     }
 
     // Kết thúc game
     private endGame() {
         AudioController.Instance.EndGame();
-        clearInterval(this.timeInterval);
+        this.unschedule(this.gameTimer);
         this.isGameover = true;
         // this.openAllAnswer();
 
+        this.numScore = this.numScore + this.numTime * 2;
         this.popupGameOver.getComponent(popupGameOver).init(this.numTime, this.numScore);
         this.popupGameOver.active = true;
 
@@ -358,6 +440,15 @@ export class WordPuzzle extends Component {
             }
             APIManager.requestData(`POST`, `/api/saveScore`, data, res => {
                 console.log("Kết thúc game => Gửi server:", res);
+
+                // // Sự kiện BATTA
+                // if (this.numScore >= 3000) {
+                //     APIManager.Challenge(`wordPuzzle3kPoint`, this.numScore);
+                // } else if (this.numScore >= 2000 && this.numScore < 3000) {
+                //     APIManager.Challenge(`wordPuzzle2kPoint`, this.numScore);
+                // } else if (this.numScore >= 1500) {
+                //     APIManager.Challenge(`wordPuzzle1k5Point`, this.numScore);
+                // }
             });
         }
 
@@ -367,10 +458,11 @@ export class WordPuzzle extends Component {
 
     // Thoát game
     outGame() {
-        clearInterval(this.timeInterval);
+        this.unschedule(this.gameTimer);
         this.isGameover = true;
 
         // Gửi điểm lên server
+        console.log(">>>isDefault", this.isDefault)
         if (!this.isDefault) {
             let data = {
                 "username": APIManager.userDATA?.username,
@@ -383,112 +475,64 @@ export class WordPuzzle extends Component {
         }
     }
 
-    // Cập nhật thời gian
-    private updateTimeLabel() {
-        const minutes = Math.floor(this.numTime / 60);
-        const seconds = this.numTime % 60;
-        this.timeLabel.string = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-
-        // Chạy hiệu ứng nháy đỏ
-        if (this.numTime <= 9) {
-            this.timeLabel.getComponent(Animation).play();
+    // Xử lý click vào gợi ý
+    private handleLetterClick(letter: Node, char: string) {
+        if (!this.isGameover && this.onItem2) {
+            KeyControl.Instance.clickBox();
+            this.checkLetters(letter, char);
+            this.onItem2 = false;
+            this.stopAnimation(this.iconItem2);
+            this.numItemUse[1] -= 1;
+            this.layoutAllLetters.forEach(layout => layout.children.forEach(child => this.stopAnimation(child)));
         }
     }
 
-    // Cập nhật số điểm
-    private updateScoreLabel(bonus?: number, targetNode?: Node) {
-        let num = this.numScore >= 0 ? this.numScore : 0;
-        this.numScore = num;
-        this.scoreLabel.string = `${num}`;
-        if (bonus) {
-            this.showBonusEffect(bonus, targetNode);
-        }
-    }
+    // Xử lý sự kiện khi nhấn vào từ
+    private handleWordClick(charNode: Node, rowIndex: number): void {
+        if (this.isGameover) return;
 
-    // Hiệu ứng cộng điểm
-    private showBonusEffect(bonus: number, target: Node) {
-        // Các hằng số cấu hình
-        const OFFSET_Y = 60;
-        const FONT_SIZE = 40;
-        const LINE_HEIGHT = 50;
+        this.questionRowLabel.string = `${rowIndex + 1}. ${this.gameData.questionRow[rowIndex]}`;
 
-        // Cache node vị trí ban đầu
-        const startPos = target ? target.getWorldPosition().clone() : this.scoreLabel.node.getWorldPosition().clone();
-
-        // Tính toán vị trí khởi tạo và vị trí mục tiêu dựa theo bonus
-        const initPos = bonus >= 0 ? startPos.clone().add(v3(0, -OFFSET_Y, 0)) : startPos.clone();
-        const offsetY = bonus >= 0 ? 0 : -OFFSET_Y;
-        const targetPos = startPos.clone().add(v3(0, offsetY, 0));
-
-        // Tạo node bonus và gán parent
-        const bonusNode = new Node("BonusEffect");
-        bonusNode.parent = this.mapNode;
-        bonusNode.setWorldPosition(initPos);
-
-        // Tạo Label cho node bonus
-        const bonusLabel = bonusNode.addComponent(Label);
-        bonusLabel.string = bonus >= 0 ? `+${bonus}` : `${bonus}`;
-        bonusLabel.color = bonus >= 0 ? new Color(0, 255, 0) : new Color(255, 0, 0);
-        bonusLabel.fontSize = FONT_SIZE;
-        bonusLabel.lineHeight = LINE_HEIGHT;
-        bonusLabel.isBold = true;
-        bonusLabel.enableOutline = true;
-        bonusLabel.outlineColor = new Color(255, 255, 255);
-        bonusLabel.enableShadow = true;
-        bonusLabel.shadowColor = new Color(56, 56, 56);
-
-        // Di chuyển node bonus từ vị trí khởi tạo đến vị trí mục tiêu
-        tween(bonusNode)
-            .to(0.5, { worldPosition: targetPos })
-            .call(() => {
-                bonusNode.destroy();
-            })
-            .start();
-    }
-
-
-    // Hiệu ứng hình ảnh gợi ý
-    private showLetterEffect(target: Node) {
-        target.scale = v3(0.01, 0.01, 0.01);
-        tween(target)
-            .to(0.7, { scale: v3(1.08, 1.08, 1.08) })
-            .to(0.7, { scale: v3(1, 1, 1) })
-            .start();
-    }
-
-
-    // Mở toàn bộ đáp án
-    private openAllAnswer() {
-        this.layoutTargetWord.children.forEach(layout => {
-            layout.children.forEach(e => {
-                if (e['keyCode']) {
-                    const label = e.getChildByPath(`Label`).getComponent(Label);
-                    if (label.string.trim() === "") {
-                        label.string = e['keyCode'];
-                    }
-                    const btn = e.getComponent(Button);
-                    if (btn) {
-                        btn.destroy();
-                    }
-                    e.off(`click`);
-                }
+        if (this.onItem3) {
+            charNode.off('click');
+            charNode?.getComponent(Button).destroy();
+            charNode.getChildByPath(`Label`).getComponent(Label).string = charNode['keyCode'];
+            this.checkCompletedWord(charNode);
+            this.numScore += GameManager.hintWord;
+            this.updateScoreLabel(GameManager.hintWord, charNode);
+            this.onItem3 = false;
+            this.stopAnimation(this.iconItem3);
+            this.numItemUse[2] -= 1;
+            this.layoutTargetWord.children.forEach(layout => {
+                layout.children.forEach(child => this.stopAnimation(child));
             });
-        });
+            return;
+        }
+
+        KeyControl.Instance.clickBox(charNode);
+        this.moveKeyboard("up");
     }
 
-    // Từ sai với đáp án
-    onWrongInput(target: Node) {
-        this.numScore += GameManager.wrongKey;
-        this.updateScoreLabel(GameManager.wrongKey, target);
-        this.effectWrong(target);
+    // Xử lý click vào âm thanh gợi ý
+    private handleSoundHintClick(item: Node, word: string) {
+        if (!this.isGameover) {
+            this.onReadWord(word);
+            if (this.wordReaded.indexOf(word) === -1) {
+                this.wordReaded.push(word);
+                this.numScore += GameManager.hintSound;
+                this.updateScoreLabel(GameManager.hintSound, item);
+                item.getComponent(Sprite).grayscale = false;
+                item.parent = this.soundOn;
+                this.onItem1 = false;
+                this.stopAnimation(this.iconItem1);
+                this.numItemUse[0] -= 1;
+            }
+        }
     }
 
     // Kiểm tra từ giống với đáp án
     async checkLetters(letter: Node, txt: string) {
-        const letters = this.gameData.all_letter;
-        if (!letters.includes(txt)) {
-            return;
-        }
+        if (!this.gameData.all_letter.includes(txt)) return;
 
         // Trừ điểm khi mở gợi ý
         this.numScore += GameManager.hintKey;
@@ -498,10 +542,7 @@ export class WordPuzzle extends Component {
         if (letter['keyCode'] === txt) {
             letter.getComponent(Box).chanceImage(0);
             letter.off(`click`);
-            const btn = letter.getComponent(Button);
-            if (btn) {
-                btn.destroy();
-            }
+            letter.getComponent(Button)?.destroy();
         }
 
         // chuyển trạng thái đáp án
@@ -512,10 +553,7 @@ export class WordPuzzle extends Component {
                     // this.moveLetters(letter, e, txt);
                     moves.push({ start: letter, target: e, txt: txt });
                     e.off(`click`);
-                    const btn = e.getComponent(Button);
-                    if (btn) {
-                        btn.destroy();
-                    }
+                    e.getComponent(Button)?.destroy();
                 }
             });
         });
@@ -525,6 +563,14 @@ export class WordPuzzle extends Component {
             await this.moveLetters(move.start, move.target, move.txt);
             await AudioController.Instance.OpenHint();
         }
+    }
+
+    // Từ sai với đáp án
+    onWrongInput(target: Node) {
+        this.numScore += GameManager.wrongKey;
+        this.updateScoreLabel(GameManager.wrongKey, target);
+        this.effectWrong(target);
+        this.comboWords = 0;
     }
 
     // Kiểm tra hoàn thành từ
@@ -549,6 +595,8 @@ export class WordPuzzle extends Component {
         if (rowComplete) {
             AudioController.Instance.OpenWord();
             bonus += GameManager.psecondaryKey;
+            APIManager.Challenge(`wordPuzzleSub`, 1);
+            // this.comboWords += 1;
         }
 
 
@@ -565,8 +613,31 @@ export class WordPuzzle extends Component {
             if (colComplete) {
                 AudioController.Instance.OpenWord();
                 bonus += GameManager.primaryKey;
+                APIManager.Challenge(`wordPuzzleMain`, 1);
+                // this.comboWords += 1;
             }
         }
+
+        // Logic Challage Game
+        // this.scheduleOnce(() => {
+        //     if (bonus > 0 && APIManager.service === SERVICE_ASSETS.ELSA) {
+        //         if (this.comboWords >= 1) {
+        //             APIManager.Challenge('quizTrue', 1);
+        //         }
+        //         switch (this.comboWords) {
+        //             case 3:
+        //                 APIManager.Challenge('quizCombo3', 1);
+        //                 break;
+        //             case 5:
+        //                 APIManager.Challenge('quizCombo5', 1);
+        //                 break;
+        //             case 7:
+        //                 APIManager.Challenge('quizCombo7', 1);
+        //                 break;
+        //         }
+        //     }
+        // }, 0.01)
+
 
         this.numScore += bonus;
         this.updateScoreLabel(bonus, taget);
@@ -576,8 +647,9 @@ export class WordPuzzle extends Component {
         this.checkAllWords();
     }
 
+
     // Kiểm tra qua tất cả các chữ có trong đáp án nếu được mở hết
-    checkAllWords() {
+    private checkAllWords() {
         let allRevealed = true;
         this.layoutTargetWord.children.forEach(layout => {
             layout.children.forEach(e => {
@@ -617,10 +689,7 @@ export class WordPuzzle extends Component {
                     if (e['keyCode'] === txt) {
                         e.getComponent(Box).chanceImage(0);
                         e.off('click');
-                        const btn = e.getComponent(Button);
-                        if (btn) {
-                            btn.destroy();
-                        }
+                        e.getComponent(Button)?.destroy();
                         return true;
                     }
                     return false;
@@ -629,8 +698,99 @@ export class WordPuzzle extends Component {
         }
     }
 
+    // Dùng API Google để đọc text
+    private onReadWord(txt: string) {
+        var msg = new SpeechSynthesisUtterance(txt);
+        window.speechSynthesis.speak(msg);
+    }
+
+    // Kiểm tra từ tiếp theo
+    getkNextWord(targetNode: Node) {
+        if (!targetNode || !targetNode.parent) {
+            return null;
+        }
+
+        const parent = targetNode.parent;
+        const index = parent.children.indexOf(targetNode);
+
+        if (index === -1 || index >= parent.children.length - 1) return null;
+        if (!parent.children[index + 1]['keyCode']) return null;
+        if (parent.children[index + 1].getChildByPath(`Label`).getComponent(Label).string.trim()) return null;
+
+        return parent.children[index + 1];
+    }
+
+
+
+    //======================= BỘ HIỆU ỨNG =========================//
+
+    // Cập nhật thời gian
+    private updateTimeLabel() {
+        const minutes = Math.floor(this.numTime / 60);
+        const seconds = this.numTime % 60;
+        this.timeLabel.string = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+
+        // Chạy hiệu ứng nháy đỏ
+        if (this.numTime <= 9) {
+            this.timeLabel.getComponent(Animation).play();
+        }
+    }
+
+    // Cập nhật số điểm
+    private updateScoreLabel(bonus?: number, targetNode?: Node) {
+        this.numScore = Math.max(0, this.numScore);
+        this.scoreLabel.string = `${this.numScore}`;
+        if (bonus) this.showBonusEffect(bonus, targetNode);
+    }
+
+    // Hiệu ứng cộng điểm
+    private showBonusEffect(bonus: number, target: Node) {
+        // Cache node vị trí ban đầu
+        const OFFSET_Y = 60;
+        const startPos = target ? target.getWorldPosition().clone() : this.scoreLabel.node.getWorldPosition().clone();
+
+        // Tính toán vị trí khởi tạo và vị trí mục tiêu dựa theo bonus
+        const initPos = bonus >= 0 ? startPos.clone().add(v3(0, -OFFSET_Y, 0)) : startPos.clone();
+        const targetPos = startPos.clone().add(v3(0, bonus >= 0 ? 0 : -OFFSET_Y, 0));
+
+
+        // Tạo node bonus và gán parent
+        const bonusNode = new Node("BonusEffect");
+        bonusNode.parent = this.mapNode;
+        bonusNode.setWorldPosition(initPos);
+
+        // Tạo Label cho node bonus
+        const bonusLabel = bonusNode.addComponent(Label);
+        bonusLabel.string = bonus >= 0 ? `+${bonus}` : `${bonus}`;
+        bonusLabel.color = bonus >= 0 ? new Color(0, 255, 0) : new Color(255, 0, 0);
+        bonusLabel.fontSize = 40;
+        bonusLabel.lineHeight = 50;
+        bonusLabel.isBold = true;
+        bonusLabel.enableOutline = true;
+        bonusLabel.outlineColor = new Color(255, 255, 255);
+        bonusLabel.enableShadow = true;
+        bonusLabel.shadowColor = new Color(56, 56, 56);
+
+        // Di chuyển node bonus từ vị trí khởi tạo đến vị trí mục tiêu
+        tween(bonusNode)
+            .to(0.5, { worldPosition: targetPos })
+            .call(() => {
+                bonusNode.destroy();
+            })
+            .start();
+    }
+
+    // Hiệu ứng hình ảnh gợi ý
+    private showLetterEffect(target: Node) {
+        target.scale = v3(0.01, 0.01, 0.01);
+        tween(target)
+            .to(0.7, { scale: v3(1.08, 1.08, 1.08) })
+            .to(0.7, { scale: v3(1, 1, 1) })
+            .start();
+    }
+
     // Di chuyển bàn phím ảo khi cần
-    moveKeyboard(active: string) {
+    private moveKeyboard(active: string) {
         const currentPos = this.Keyboard.position;
         let targetPos: Vec3;
 
@@ -695,40 +855,83 @@ export class WordPuzzle extends Component {
             .start();
     }
 
-    // Tách ghép các đáp án thành từ có nghĩa
-    private extractGridToWords(grid: string[][], keyColumn: number) {
-        // Lấy các từ của từng hàng
-        const words = grid.map(row => row.filter(char => char !== ' ').join(''));
-
-        // Lấy chữ ở cột keyColumn của mỗi hàng
-        const keyWord = grid
-            .map(row => row[keyColumn])
-            .filter(char => char !== ' ')
-            .join('');
-
-        return { words, keyWord };
-    }
-
-    // Dùng API Google để đọc text
-    private onReadWord(txt: string) {
-        var msg = new SpeechSynthesisUtterance(txt);
-        window.speechSynthesis.speak(msg);
-    }
-
-    // Kiểm tra từ tiếp theo
-    getkNextWord(targetNode: Node) {
-        if (!targetNode || !targetNode.parent) {
-            return null;
+    //Hiệu ứng rung nhẹ
+    private playAnimation(child: Node): void {
+        const anim = child.getComponent(Animation);
+        if (anim) {
+            anim.play();
         }
-
-        const parent = targetNode.parent;
-        const index = parent.children.indexOf(targetNode);
-
-        if (index === -1 || index >= parent.children.length - 1) return null;
-        if (!parent.children[index + 1]['keyCode']) return null;
-
-        return parent.children[index + 1];
     }
+    private stopAnimation(child: Node): void {
+        const anim = child.getComponent(Animation);
+        if (anim) {
+            anim.stop();
+        }
+        // child.eulerAngles = new Vec3(0, 0, 0);
+        child.setScale(new Vec3(1, 1, 1));
+        child.rotation = Quat.IDENTITY;
+    }
+
+
+    //Bật tắt các Item
+    clickOnOff(e: Event, type: string) {
+        KeyControl.Instance.confirmBox(false);
+        this.OffAllItem();
+        switch (type) {
+            case "item1":
+                if (this.numItemUse[0] > 0) {
+                    this.onItem1 = !this.onItem1;
+                    if (this.onItem1) {
+                        this.playAnimation(this.iconItem1);
+                    } else {
+                        this.stopAnimation(this.iconItem1);
+                    }
+                }
+                break;
+            case "item2":
+                if (this.numItemUse[1] > 0) {
+                    this.onItem2 = !this.onItem2;
+                    if (this.onItem2) {
+                        this.playAnimation(this.iconItem2);
+                        this.layoutAllLetters.forEach(layout => {
+                            layout.children.forEach(child => {
+                                this.playAnimation(child);
+                            });
+                        });
+                    }
+                    else {
+                        this.stopAnimation(this.iconItem2)
+                        this.layoutAllLetters.forEach(layout => {
+                            layout.children.forEach(child => {
+                                this.stopAnimation(child);
+                            });
+                        });
+                    }
+                }
+                break;
+            case "item3":
+                if (this.numItemUse[2] > 0) {
+                    this.onItem3 = !this.onItem3;
+                    if (this.onItem3) {
+                        this.playAnimation(this.iconItem3);
+                        this.layoutTargetWord.children.forEach(layout => {
+                            layout.children.forEach(child => {
+                                this.playAnimation(child);
+                            });
+                        });
+                    } else {
+                        this.stopAnimation(this.iconItem3);
+                        this.layoutTargetWord.children.forEach(layout => {
+                            layout.children.forEach(child => {
+                                this.stopAnimation(child);
+                            });
+                        });
+                    }
+                }
+                break;
+        }
+    }
+
 }
 
 

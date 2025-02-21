@@ -1,3 +1,15 @@
 {
-  "__version__": "1.3.7"
+  "__version__": "1.3.7",
+  "splash-setting": {
+    "background": {
+      "type": "custom",
+      "image": "project://settings/background2.png"
+    },
+    "displayRatio": 1,
+    "totalTime": 500,
+    "logo": {
+      "type": "custom",
+      "image": "project://settings/logo-001.png"
+    }
+  }
 }

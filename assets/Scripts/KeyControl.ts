@@ -84,7 +84,7 @@ export class KeyControl extends Component {
         if (this.targetBox && this.targetBox['keyCode']) {
             this.updateBoxImage(this.targetBox, false);
 
-            console.log("currentText: ",this.currentText)
+            // console.log("currentText: ",this.currentText)
             if(this.currentText){
                 if (this.currentText !== this.targetBox['keyCode']) {
                     AudioController.Instance.WrongWord();

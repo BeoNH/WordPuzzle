@@ -21,7 +21,7 @@ export class KeyCode extends Component {
 
     // Xử lý bấm
     onClick() {
-        console.log("Nút: ", this.defaultTxt);
+        // console.log("Nút: ", this.defaultTxt);
         if(this.isBackSpace){
             KeyControl.Instance.fillTxtBox(null);
         }else{
