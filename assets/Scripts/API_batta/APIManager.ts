@@ -10,7 +10,7 @@ export enum SERVICE_ASSETS {
 @ccclass('APIManager')
 export class APIManager extends Component {
 
-    public static service = SERVICE_ASSETS.ELSA;
+    public static service = SERVICE_ASSETS.BATTA;
 
     public static urlAPI: string = "https://api-tele.gamebatta.com";// batta
     public static urlBATTA: string = "https://apiwordpuzzle-tele.gamebatta.com";// sever game batta
