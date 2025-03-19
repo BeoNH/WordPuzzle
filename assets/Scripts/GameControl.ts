@@ -46,7 +46,7 @@ export class GameControl extends Component {
 
     openMenu() {
         AudioController.Instance.Click();
-        this.loginBatta();
+        this.remainTurn();
         this.sceneMenu.active = true;
         this.scenePlay.active = false;
     }
@@ -69,7 +69,7 @@ export class GameControl extends Component {
         AudioController.Instance.Click();
 
         // Cập nhật số lượt trước khi restart game
-        this.loginBatta(remainTurn => {
+        this.remainTurn(remainTurn => {
             if (remainTurn <= 0) {
                 this.openMenu();
                 UIControl.instance.onMess(`No turns remaining. \nPlease purchase extra turns to proceed.`);
@@ -81,10 +81,11 @@ export class GameControl extends Component {
     }
 
     // Đăng nhập Batta lấy thông tin
-    private loginBatta(callback?: (remainTurn: number) => void): void {
+    private loginBatta() {
         const url = `/api/login`;
         const data = {
             "token": APIManager.urlParam(`token`),
+            // "token": `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjU4IiwidXNlcm5hbWUiOiJiZW9uaDEyMyIsImVtYWlsIjoiaG9hbmduZ3V5ZW5oYnNAZ21haWwuY29tIiwiaXNDcmVhdG9ycyI6ZmFsc2UsInJhbmsiOiJCcm9uemUiLCJpYXQiOjE3NDEzMTMyMDIsImV4cCI6MTc0MTMyNDAwMn0.SSoMEmjcDZAN39dBiSLTWXp1jb5mUSPjqOZE95R7agI`,
         };
         APIManager.requestData(`POST`, url, data, res => {
             console.log("Login_info: ", res)
@@ -92,9 +93,24 @@ export class GameControl extends Component {
                 UIControl.instance.onMess(`${url} => ${res}`);
                 return;
             }
-
             APIManager.userDATA = res;
-            
+
+            this.numTurn = res.remain_turn;
+            this.labelTurn.string = res.remain_turn;
+        });
+    }
+
+    // Cập nhật thông tin số lượt
+    private remainTurn(callback?: (remainTurn: number) => void): void {
+        const url = `/api/getTurn`;
+        const data = {
+            "username": APIManager.userDATA?.username,
+        };
+        APIManager.requestData(`POST`, url, data, res => {
+            if (!res) {
+                UIControl.instance.onMess(`${url} => ${res}`);
+                return;
+            }
             this.numTurn = res.remain_turn;
             this.labelTurn.string = res.remain_turn;
             if (callback) {
@@ -102,26 +118,6 @@ export class GameControl extends Component {
             }
         });
     }
-
-    // Cập nhật thông tin số lượt
-    // private updateRemainTurn(callback?: (remainTurn: number) => void): void {
-    //     const url = `/api/sendInfo`;
-    //     const data = {
-    //         // "userId": APIManager.userDATA?.id,
-    //         "username": APIManager.userDATA?.username,
-    //     };
-    //     APIManager.requestData(`POST`, url, data, res => {
-    //         if (!res) {
-    //             UIControl.instance.onMess(`${url} => ${res}`);
-    //             return;
-    //         }
-    //         this.numTurn = res.remain_turn;
-    //         this.labelTurn.string = res.remain_turn;
-    //         if (callback) {
-    //             callback(this.numTurn);
-    //         }
-    //     });
-    // }
 
 
 }

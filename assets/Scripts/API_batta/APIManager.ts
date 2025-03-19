@@ -70,6 +70,10 @@ export class APIManager extends Component {
                 var response = JSON.parse(xhr.responseText);
                 console.log(`Call.${method}=>`, url, "\n", response);
             }
+            if (xhr.status == 201 && xhr.responseText) {
+                response = JSON.parse(xhr.responseText);
+                response.error = xhr.status;
+            }
             callback(response);
         };
         xhr.open(method, url, true);

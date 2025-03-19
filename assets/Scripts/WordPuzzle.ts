@@ -7,6 +7,7 @@ import { APIManager, SERVICE_ASSETS } from './API_batta/APIManager';
 import { AudioController } from './AudioController';
 import { UIControl } from './UIControl';
 import { GameControl } from './GameControl';
+// import { AnimationController } from './AnimationController';
 const { ccclass, property } = _decorator;
 
 @ccclass('WordPuzzle')
@@ -82,6 +83,7 @@ export class WordPuzzle extends Component {
         WordPuzzle.Instance = this;
 
         this.mapNode = find(`Canvas/GamePlay/Map`);
+        speechSynthesis.getVoices()
     }
 
     start() {
@@ -99,16 +101,20 @@ export class WordPuzzle extends Component {
         this.iconItem2.getComponent(Sprite).grayscale = this.numItemUse[1] <= 0;
         this.iconItem3.getComponent(Sprite).grayscale = this.numItemUse[2] <= 0;
 
-        this.iconItem1.children[0].getComponent(Label).string = `x${this.numItemUse[0]}`;
-        this.iconItem2.children[0].getComponent(Label).string = `x${this.numItemUse[1]}`;
-        this.iconItem3.children[0].getComponent(Label).string = `x${this.numItemUse[2]}`;
+        this.iconItem1.getChildByPath(`num`).getComponent(Label).string = `x${this.numItemUse[0]}`;
+        this.iconItem2.getChildByPath(`num`).getComponent(Label).string = `x${this.numItemUse[1]}`;
+        this.iconItem3.getChildByPath(`num`).getComponent(Label).string = `x${this.numItemUse[2]}`;
     }
 
     // Khởi tạo lại game
     resetGame() {
-        APIManager.requestData(`GET`, `/api/suggestions`, null, res => {
-            if (!res) {
-                UIControl.instance.onMess(`Loading game data failed \n. . .`);
+        const data = {
+            "username": APIManager.userDATA?.username,
+        };
+
+        APIManager.requestData(`POST`, `/api/getSuggestions`, data, res => {
+            if (res?.error == 201 || !res) {
+                UIControl.instance.onMess(`Loading game data failed \n. . .\n ${res?.message}`);
                 GameControl.Instance.openMenu();
                 return;
             }
@@ -202,7 +208,7 @@ export class WordPuzzle extends Component {
 
         // tính chia đều cho các hàng
         // const lettersPerRow = Math.ceil(this.gameData.all_letter.length / this.layoutAllLetters.length);
-        const lettersPerRow = 7;
+        const lettersPerRow = 9;
         AudioController.Instance.OpenWord();
 
         for (let i = 0; i < this.gameData.all_letter.length; i++) {
@@ -229,16 +235,22 @@ export class WordPuzzle extends Component {
     }
 
     // Tạo mảng 2 chiều đáp án
+    private scaleTarget = 1;
     private generateMatrix() {
         if (!this.layoutTargetWord) {
             console.error("layoutTargetWords chưa được thiết lập!");
             return;
         }
 
+        // Scale theo số lượng phần tử dòng
+        const rowCount = this.gameData.answer[0].length;
+        this.scaleTarget = this.calculateScale(rowCount);
+        this.layoutTargetWord.scale = v3(this.scaleTarget, this.scaleTarget, 1);
+
+        // Tạo từng hàng
         for (let i = 0; i < this.gameData.answer.length; i++) {
             let itemRow = this.gameData.answer[i];
 
-            // Tạo từng hàng
             const row = new Node(`${i}`);
             row.parent = this.layoutTargetWord;
 
@@ -248,16 +260,6 @@ export class WordPuzzle extends Component {
             this.setupQuestBoxForRow(row, itemRow, i);
             this.setupHintSound(row, itemRow, i);
         }
-
-        // Scale theo số lượng dòng
-        const rowCount = this.gameData.answer[0].length;
-        let scale = 1;
-        const scaleFactor = 0.07;
-
-        if (rowCount > 11) {
-            scale = 1 - (rowCount - 11) * scaleFactor;
-        }
-        this.layoutTargetWord.scale = v3(scale, scale, 1);
     }
 
     // Cấu hình layout cho hàng
@@ -265,7 +267,7 @@ export class WordPuzzle extends Component {
         const layout = row.addComponent(Layout);
         layout.type = Layout.Type.HORIZONTAL;
         layout.resizeMode = Layout.ResizeMode.CONTAINER;
-        layout.spacingX = 7;
+        layout.spacingX = 10;
     }
 
     // Tạo box cho từng ký tự trong hàng
@@ -353,14 +355,27 @@ export class WordPuzzle extends Component {
         let item = instantiate(this.soundItem);
         item.name = `${item.name}_${word}`;
         item.parent = this.soundOff;
+        item.scale = v3(this.scaleTarget, this.scaleTarget, 1);
         item.worldPosition = target.worldPosition.clone();
-        item.position.add(v3(80, -5, 0));
+
+        let deviation = 95 * this.scaleTarget;
+        item.position.add(v3(deviation, 0, 0));
         if (iskey) {
-            item.position.add(v3(0, -80, 0));
+            item.position.add(v3(0, -deviation, 0));
         }
 
         item.off('click');
         item.on('click', () => this.handleSoundHintClick(item, word));
+    }
+
+    // Tính toán tỷ lệ scale
+    private calculateScale(rowCount: number): number {
+        if (rowCount >= 4 && rowCount <= 9) {
+            return 1 + (9 - rowCount) * 0.11;
+        } else if (rowCount > 9) {
+            return 1 - (rowCount - 9) * 0.07;
+        }
+        return 1;
     }
 
     // Mở toàn bộ đáp án
@@ -401,13 +416,13 @@ export class WordPuzzle extends Component {
         //     this.numScore += GameManager.timeScore;
         //     this.updateScoreLabel();
         // }
-        
+
         if (this.numTime <= 0 || this.numScore <= 0) {
             // this.numScore = 0;
             this.numTime = 0;
             this.endGame();
         }
-        
+
         this.updateTimeLabel();
     }
 
@@ -466,9 +481,14 @@ export class WordPuzzle extends Component {
         if (!this.isDefault) {
             let data = {
                 "username": APIManager.userDATA?.username,
-                "score": 0,
-                "time": 0
+                "score": this.numScore,
+                "time": this.numTime
             }
+            // let data = {
+            //     "username": APIManager.userDATA?.username,
+            //     "score": 0,
+            //     "time": 0
+            // }
             APIManager.requestData(`POST`, `/api/saveScore`, data, res => {
                 console.log("Thoát game => Gửi server:", res);
             });
@@ -477,13 +497,18 @@ export class WordPuzzle extends Component {
 
     // Xử lý click vào gợi ý
     private handleLetterClick(letter: Node, char: string) {
-        if (!this.isGameover && this.onItem2) {
-            KeyControl.Instance.clickBox();
-            this.checkLetters(letter, char);
-            this.onItem2 = false;
-            this.stopAnimation(this.iconItem2);
-            this.numItemUse[1] -= 1;
-            this.layoutAllLetters.forEach(layout => layout.children.forEach(child => this.stopAnimation(child)));
+        if (!this.isGameover) {
+            if (this.onItem2) {
+                KeyControl.Instance.clickBox();
+                this.checkLetters(letter, char);
+                this.onItem2 = false;
+                this.stopAnimation(this.iconItem2);
+                // AnimationController.Instance.moveHintLeftRight(`L`);
+                this.numItemUse[1] -= 1;
+                this.layoutAllLetters.forEach(layout => layout.children.forEach(child => this.stopAnimation(child)));
+            } else {
+                // AnimationController.Instance.playAnimationNomal(`Hand2`);
+            }
         }
     }
 
@@ -502,6 +527,7 @@ export class WordPuzzle extends Component {
             this.updateScoreLabel(GameManager.hintWord, charNode);
             this.onItem3 = false;
             this.stopAnimation(this.iconItem3);
+            // AnimationController.Instance.moveHintLeftRight(`L`);
             this.numItemUse[2] -= 1;
             this.layoutTargetWord.children.forEach(layout => {
                 layout.children.forEach(child => this.stopAnimation(child));
@@ -525,6 +551,7 @@ export class WordPuzzle extends Component {
                 item.parent = this.soundOn;
                 this.onItem1 = false;
                 this.stopAnimation(this.iconItem1);
+                // AnimationController.Instance.moveHintLeftRight(`L`);
                 this.numItemUse[0] -= 1;
             }
         }
@@ -699,9 +726,18 @@ export class WordPuzzle extends Component {
     }
 
     // Dùng API Google để đọc text
-    private onReadWord(txt: string) {
-        var msg = new SpeechSynthesisUtterance(txt);
-        window.speechSynthesis.speak(msg);
+    onReadWord(txt: string) {
+        if (window.speechSynthesis) {
+            const msg = new SpeechSynthesisUtterance(txt);
+            msg.voice = speechSynthesis.getVoices()[6]; // Giọng đọc
+            msg.lang = 'en-US'; // Ngôn ngữ tiếng Anh
+            msg.volume = 1; // Âm lượng (0-1)
+            msg.rate = 0.8; // Tốc độ đọc (0.1-10)
+            msg.pitch = 1; // Độ cao giọng (0-2)
+            window.speechSynthesis.speak(msg);
+        } else {
+            console.error("SpeechSynthesis không được hỗ trợ trên nền tảng này!");
+        }
     }
 
     // Kiểm tra từ tiếp theo
@@ -805,10 +841,17 @@ export class WordPuzzle extends Component {
                 .to(0.1, { position: targetPos })
                 .start();
         }
+
+    }
+
+    // tắt trợ giúp
+    private moveHint() {
+        // KeyControl.Instance.clickBox();
+        // AnimationController.Instance.moveHintLeftRight(`L`);
     }
 
     // Effect di chuyển đáp án
-    moveLetters(start: Node, target: Node, txt: string): Promise<void> {
+    private moveLetters(start: Node, target: Node, txt: string): Promise<void> {
         return new Promise((resolve) => {
             const label = target.getChildByPath(`Label`).getComponent(Label);
             if (label.string.trim() === "") {
@@ -850,14 +893,14 @@ export class WordPuzzle extends Component {
             .to(0.05, { angle: 0 })
             .call(() => {
                 label.string = "";
-                label.color = new Color(255, 255, 255);
+                label.color = new Color(0, 0, 0);
             })
             .start();
     }
 
-    //Hiệu ứng rung nhẹ
-    private playAnimation(child: Node): void {
-        const anim = child.getComponent(Animation);
+    //Chạy các hiệu ứng trong edit
+    private playAnimation(node: Node): void {
+        const anim = node.getComponent(Animation);
         if (anim) {
             anim.play();
         }
@@ -866,10 +909,15 @@ export class WordPuzzle extends Component {
         const anim = child.getComponent(Animation);
         if (anim) {
             anim.stop();
+
         }
         // child.eulerAngles = new Vec3(0, 0, 0);
         child.setScale(new Vec3(1, 1, 1));
         child.rotation = Quat.IDENTITY;
+        const sprite = child.getComponent(Sprite);
+        if (sprite) {
+            sprite.color = new Color(255, 255, 255, 255);
+        }
     }
 
 
@@ -883,8 +931,10 @@ export class WordPuzzle extends Component {
                     this.onItem1 = !this.onItem1;
                     if (this.onItem1) {
                         this.playAnimation(this.iconItem1);
+                        // AnimationController.Instance.playAnimation(`Sound`);
                     } else {
                         this.stopAnimation(this.iconItem1);
+                        // AnimationController.Instance.moveHintLeftRight(`L`);
                     }
                 }
                 break;
@@ -893,6 +943,7 @@ export class WordPuzzle extends Component {
                     this.onItem2 = !this.onItem2;
                     if (this.onItem2) {
                         this.playAnimation(this.iconItem2);
+                        // AnimationController.Instance.playAnimation(`Letter`);
                         this.layoutAllLetters.forEach(layout => {
                             layout.children.forEach(child => {
                                 this.playAnimation(child);
@@ -900,7 +951,8 @@ export class WordPuzzle extends Component {
                         });
                     }
                     else {
-                        this.stopAnimation(this.iconItem2)
+                        this.stopAnimation(this.iconItem2);
+                        // AnimationController.Instance.moveHintLeftRight(`L`);
                         this.layoutAllLetters.forEach(layout => {
                             layout.children.forEach(child => {
                                 this.stopAnimation(child);
@@ -914,6 +966,7 @@ export class WordPuzzle extends Component {
                     this.onItem3 = !this.onItem3;
                     if (this.onItem3) {
                         this.playAnimation(this.iconItem3);
+                        // AnimationController.Instance.playAnimation(`Words`);
                         this.layoutTargetWord.children.forEach(layout => {
                             layout.children.forEach(child => {
                                 this.playAnimation(child);
@@ -921,6 +974,7 @@ export class WordPuzzle extends Component {
                         });
                     } else {
                         this.stopAnimation(this.iconItem3);
+                        // AnimationController.Instance.moveHintLeftRight(`L`);
                         this.layoutTargetWord.children.forEach(layout => {
                             layout.children.forEach(child => {
                                 this.stopAnimation(child);

@@ -40,7 +40,7 @@ export class popupRank extends Component {
                 const e = this.layoutTOP3.children[i];
                 if(listBXH[i]){
                     e.active = true;
-                    e.getChildByPath("txtName").getComponent(Label).string = listBXH[i].name;
+                    e.getChildByPath("txtName").getComponent(Label).string = this.limitName(listBXH[i].name);
                     e.getChildByPath("txtTime").getComponent(Label).string = listBXH[i].numTime + "s";
                     e.getChildByPath("txtScore").getComponent(Label).string = listBXH[i].numScore;
                 }
@@ -65,7 +65,7 @@ export class popupRank extends Component {
                 // Cập nhật thông tin cho item
                 const rankIndex = j + 3;
                 item.getChildByPath("txtRank").getComponent(Label).string = `${rankIndex + 1}`;
-                item.getChildByPath("txtName").getComponent(Label).string = listBXH[rankIndex].name;
+                item.getChildByPath("txtName").getComponent(Label).string = this.limitName(listBXH[rankIndex].name);
                 item.getChildByPath("txtTime").getComponent(Label).string = listBXH[rankIndex].numTime + "s";
                 item.getChildByPath("txtScore").getComponent(Label).string = listBXH[rankIndex].numScore;
             }
@@ -79,13 +79,20 @@ export class popupRank extends Component {
     
             // Cập nhật thông tin xếp hạng của người chơi
             this.playerRank.getChildByPath("playerRank").getComponent(Label).string = res.yourInfo.rank;
-            this.playerRank.getChildByPath("playerName").getComponent(Label).string = res.yourInfo.name;
+            this.playerRank.getChildByPath("playerName").getComponent(Label).string = this.limitName(res.yourInfo.name);
             this.playerRank.getChildByPath("playerTime").getComponent(Label).string = res.yourInfo.numTime + "s";
             this.playerRank.getChildByPath("playerScore").getComponent(Label).string = res.yourInfo.numScore;
         });
     }
     
-
+    // Giới hạn text không quá dài
+    private limitName(name: string): string {
+        const maxLength = 15;
+        if (name.length > maxLength) {
+            return name.substring(0, maxLength) + ' . . .';
+        }
+        return name;
+    }
 }
 
 

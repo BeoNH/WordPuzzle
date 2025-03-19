@@ -56,7 +56,7 @@ export class UIControl extends Component {
         this.popupErroLogin.getChildByPath(`txt`).getComponent(Label).string = txt;
         this.scheduleOnce(() => {
             this.popupErroLogin.active = false;
-        }, 3)
+        }, 2)
     }
 }
 

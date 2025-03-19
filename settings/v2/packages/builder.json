@@ -3,13 +3,13 @@
   "splash-setting": {
     "background": {
       "type": "custom",
-      "image": "project://settings/background2.png"
+      "image": "project://settings/background.png"
     },
     "displayRatio": 1,
     "totalTime": 500,
     "logo": {
       "type": "custom",
-      "image": "project://settings/logo-001.png"
+      "image": "project://settings/main (3).png"
     }
   }
 }

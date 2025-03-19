@@ -142,8 +142,8 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 80,
-      "height": 80
+      "width": 113,
+      "height": 113
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -179,12 +179,12 @@
       "a": 255
     },
     "_spriteFrame": {
-      "__uuid__": "97fff4c3-033b-4ff0-909a-8eaa70427c85@f9941",
+      "__uuid__": "5c7e4ab4-84cb-427b-8e5e-c30903d5eda9@f9941",
       "__expectedType__": "cc.SpriteFrame"
     },
     "_type": 0,
     "_fillType": 0,
-    "_sizeMode": 0,
+    "_sizeMode": 1,
     "_fillCenter": {
       "__type__": "cc.Vec2",
       "x": 0,
@@ -309,18 +309,18 @@
     "_dstBlendFactor": 4,
     "_color": {
       "__type__": "cc.Color",
-      "r": 255,
-      "g": 255,
-      "b": 255,
+      "r": 0,
+      "g": 0,
+      "b": 0,
       "a": 255
     },
     "_string": "",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
-    "_actualFontSize": 50,
-    "_fontSize": 50,
+    "_actualFontSize": 70,
+    "_fontSize": 70,
     "_fontFamily": "Arial",
-    "_lineHeight": 40,
+    "_lineHeight": 70,
     "_overflow": 1,
     "_enableWrapText": true,
     "_font": null,
@@ -334,13 +334,13 @@
     "_enableOutline": true,
     "_outlineColor": {
       "__type__": "cc.Color",
-      "r": 255,
-      "g": 255,
-      "b": 255,
+      "r": 0,
+      "g": 0,
+      "b": 0,
       "a": 255
     },
-    "_outlineWidth": 2,
-    "_enableShadow": true,
+    "_outlineWidth": 1.5,
+    "_enableShadow": false,
     "_shadowColor": {
       "__type__": "cc.Color",
       "r": 56,
@@ -474,7 +474,7 @@
       "a": 255
     },
     "_spriteFrame": {
-      "__uuid__": "cf949d43-c356-400e-8fd5-18d23b2b13db@f9941",
+      "__uuid__": "7eabe988-b0ad-44ac-a1d3-5f0474b62214@f9941",
       "__expectedType__": "cc.SpriteFrame"
     },
     "_type": 0,
@@ -573,8 +573,8 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 0,
-      "height": 63
+      "width": 24.24609375,
+      "height": 65
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -604,12 +604,12 @@
     "_dstBlendFactor": 4,
     "_color": {
       "__type__": "cc.Color",
-      "r": 0,
-      "g": 0,
-      "b": 0,
+      "r": 255,
+      "g": 255,
+      "b": 255,
       "a": 255
     },
-    "_string": "",
+    "_string": "1",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
     "_actualFontSize": 40,
@@ -626,15 +626,15 @@
     "_isUnderline": false,
     "_underlineHeight": 2,
     "_cacheMode": 0,
-    "_enableOutline": false,
+    "_enableOutline": true,
     "_outlineColor": {
       "__type__": "cc.Color",
-      "r": 0,
-      "g": 0,
-      "b": 0,
+      "r": 255,
+      "g": 255,
+      "b": 255,
       "a": 255
     },
-    "_outlineWidth": 2,
+    "_outlineWidth": 1,
     "_enableShadow": false,
     "_shadowColor": {
       "__type__": "cc.Color",
@@ -682,8 +682,8 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 80,
-      "height": 80
+      "width": 90,
+      "height": 90
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -771,23 +771,23 @@
     },
     "listImageBox": [
       {
-        "__uuid__": "97fff4c3-033b-4ff0-909a-8eaa70427c85@f9941",
+        "__uuid__": "5c7e4ab4-84cb-427b-8e5e-c30903d5eda9@f9941",
         "__expectedType__": "cc.SpriteFrame"
       },
       {
-        "__uuid__": "bf1510a5-870a-411f-9ce1-789e8b605c11@f9941",
+        "__uuid__": "c931a5d1-4e05-45ba-8907-d999a6c02b97@f9941",
         "__expectedType__": "cc.SpriteFrame"
       },
       {
-        "__uuid__": "acfd328a-8361-4fbf-b910-77b82d61f14c@f9941",
+        "__uuid__": "5a19db3a-56e4-4dce-97f8-a76bc70c483d@f9941",
         "__expectedType__": "cc.SpriteFrame"
       },
       {
-        "__uuid__": "6a1ffa9e-bc08-417a-b318-5e8093698576@f9941",
+        "__uuid__": "75b16e5f-efbc-4a73-b502-28713d92ff07@f9941",
         "__expectedType__": "cc.SpriteFrame"
       },
       {
-        "__uuid__": "a66e730e-a814-4be0-a097-4689780a5a67@f9941",
+        "__uuid__": "48ff65fb-3182-4b4e-98c0-92245f2d528b@f9941",
         "__expectedType__": "cc.SpriteFrame"
       }
     ],
