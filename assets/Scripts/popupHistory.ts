@@ -18,7 +18,7 @@ export class popupHistory extends Component {
     }
 
     initHistoryList() {
-        const url = `/api/getHistory`;
+        const url = `/getHistory`;
         const data = {
             "username": APIManager.userDATA?.username,
             // "username": "beonh123",

@@ -32,7 +32,7 @@ export class GameControl extends Component {
         this.scenePlay.active = false;
 
         // Kiểm tra đăng nhập
-        this.loginBatta();
+        this.loginGame();
     }
 
     onDestroy() {
@@ -61,7 +61,7 @@ export class GameControl extends Component {
 
         this.sceneMenu.active = false;
         this.scenePlay.active = true;
-        WordPuzzle.Instance.resetGame();
+        WordPuzzle.Instance.loadGamePages();
     }
 
     // CHơi lại
@@ -76,16 +76,15 @@ export class GameControl extends Component {
                 return;
             }
 
-            WordPuzzle.Instance.resetGame();
+            WordPuzzle.Instance.loadGamePages();
         });
     }
 
     // Đăng nhập Batta lấy thông tin
-    private loginBatta() {
-        const url = `/api/login`;
+    private loginGame() {
+        const url = `/login`;
         const data = {
             "token": APIManager.urlParam(`token`),
-            // "token": `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjU4IiwidXNlcm5hbWUiOiJiZW9uaDEyMyIsImVtYWlsIjoiaG9hbmduZ3V5ZW5oYnNAZ21haWwuY29tIiwiaXNDcmVhdG9ycyI6ZmFsc2UsInJhbmsiOiJCcm9uemUiLCJpYXQiOjE3NDEzMTMyMDIsImV4cCI6MTc0MTMyNDAwMn0.SSoMEmjcDZAN39dBiSLTWXp1jb5mUSPjqOZE95R7agI`,
         };
         APIManager.requestData(`POST`, url, data, res => {
             console.log("Login_info: ", res)
@@ -102,7 +101,7 @@ export class GameControl extends Component {
 
     // Cập nhật thông tin số lượt
     private remainTurn(callback?: (remainTurn: number) => void): void {
-        const url = `/api/getTurn`;
+        const url = `/getTurn`;
         const data = {
             "username": APIManager.userDATA?.username,
         };

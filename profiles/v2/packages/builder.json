@@ -11,7 +11,15 @@
     "outputName": "web-mobile",
     "mainBundleCompressionType": "merge_dep",
     "platform": "web-mobile",
-    "md5Cache": true
+    "md5Cache": true,
+    "name": "WordPuzzle_lingox",
+    "scenes": [
+      {
+        "url": "db://assets/Scene/LingoX.scene",
+        "uuid": "25dd6eb1-ebfd-4b8e-bd0e-2243f9c6dfbf"
+      }
+    ],
+    "startScene": "25dd6eb1-ebfd-4b8e-bd0e-2243f9c6dfbf"
   },
   "BuildTaskManager": {
     "taskMap": {
@@ -21,9 +29,9 @@
         "progress": 1,
         "state": "success",
         "stage": "build",
-        "message": "3-19-2025 10:28:51 build success in 12 s!",
+        "message": "6-3-2025 08:44:57 build success in 18 s!",
         "options": {
-          "name": "WordPuzzle",
+          "name": "WordPuzzle_batta",
           "server": "",
           "platform": "web-mobile",
           "buildPath": "project://build",
@@ -45,10 +53,10 @@
           "packAutoAtlas": true,
           "startScene": "aca8992a-6cd0-46de-aed6-8f84dcbb4934",
           "outputName": "web-mobile",
-          "taskName": "web-mobile",
+          "taskName": "BATTA",
           "scenes": [
             {
-              "url": "db://assets/GamePlay.scene",
+              "url": "db://assets/Scene/Batta.scene",
               "uuid": "aca8992a-6cd0-46de-aed6-8f84dcbb4934"
             }
           ],
@@ -57,8 +65,53 @@
           "buildMode": "normal",
           "logDest": "project://temp/builder/log/web-mobile1-24-2025 13-57.log"
         },
-        "time": "3-19-2025 10:28:39",
-        "dirty": false
+        "time": "6-3-2025 08:44:39",
+        "dirty": true
+      },
+      "1749031621500": {
+        "type": "build",
+        "id": "1749031621500",
+        "progress": 1,
+        "state": "success",
+        "stage": "build",
+        "message": "6-9-2025 14:57:34 build success in 29 s!",
+        "options": {
+          "name": "WordPuzzle_lingox",
+          "server": "",
+          "platform": "web-mobile",
+          "buildPath": "project://build",
+          "debug": false,
+          "md5Cache": true,
+          "skipCompressTexture": false,
+          "sourceMaps": false,
+          "polyfills": {
+            "asyncFunctions": true
+          },
+          "experimentalEraseModules": false,
+          "startSceneAssetBundle": false,
+          "bundleConfigs": [],
+          "useBuiltinServer": false,
+          "mainBundleIsRemote": false,
+          "mainBundleCompressionType": "merge_dep",
+          "useSplashScreen": true,
+          "bundleCommonChunk": false,
+          "packAutoAtlas": true,
+          "startScene": "25dd6eb1-ebfd-4b8e-bd0e-2243f9c6dfbf",
+          "outputName": "web-mobile",
+          "taskName": "LINGOX",
+          "scenes": [
+            {
+              "url": "db://assets/Scene/LingoX.scene",
+              "uuid": "25dd6eb1-ebfd-4b8e-bd0e-2243f9c6dfbf"
+            }
+          ],
+          "packages": {},
+          "__version__": "1.3.7",
+          "buildMode": "normal",
+          "logDest": "project://temp/builder/log/web-mobile6-4-2025 17-07.log"
+        },
+        "time": "6-9-2025 14:57:05",
+        "dirty": true
       }
     }
   }

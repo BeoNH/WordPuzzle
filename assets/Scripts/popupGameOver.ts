@@ -7,22 +7,32 @@ const { ccclass, property } = _decorator;
 @ccclass('popupGameOver')
 export class popupGameOver extends Component {
 
+    @property({ type: Label, tooltip: "Thời gian chơi" })
+    protected numTimePlay: Label = null;
+
     @property({ type: Label, tooltip: "Thời gian còn lại" })
-    protected numTime: Label = null;
+    protected numTimeRemain: Label = null;
 
     @property({ type: NumberScrolling, tooltip: "Điểm" })
     protected numScore: NumberScrolling = null;
 
+    @property({ type: Label, tooltip: "Thưởng cộng thêm" })
+    protected numBonus: Label = null;
+
     private visibleTimestamp: number = 0; // Biến lưu thời gian popup được bật (mili-giây)
 
     init(time, score) {
-        this.numTime.string = `${time}s`;
+        this.numTimePlay.string = `${180 - time}s`;
+        this.numTimeRemain.string = `${time}s`;
+        this.numScore.setValue(0);
+        this.numBonus.string = `0`;
         let num = score >= 0 ? score : 0;
         this.scheduleOnce(()=>{
-            this.numTime.string = `${time}s (+${time * 2})`;
+            this.numTimeRemain.string = `${time}s`;
         },0.7)
         this.scheduleOnce(()=>{
             this.numScore.to(num);
+            this.numBonus.string = `${time * 2}`;
         },0.8)
         UIControl.instance.onClose();
     }
@@ -48,7 +58,7 @@ export class popupGameOver extends Component {
 
 
     protected onDisable(): void {
-        this.numTime.string = null;
+        this.numTimeRemain.string = null;
         this.numScore.to(0);
         this.unschedule(this.checkPopupTime);
     }

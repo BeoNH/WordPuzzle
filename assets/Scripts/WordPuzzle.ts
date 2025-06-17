@@ -1,4 +1,4 @@
-import { _decorator, Animation, BitmapFont, Button, Color, Component, EventHandle, EventHandler, EventTouch, find, instantiate, Label, Layout, Node, Prefab, Quat, Sprite, tween, v3, Vec3 } from 'cc';
+import { _decorator, Animation, BitmapFont, Button, Color, Component, EventHandle, EventHandler, EventTouch, find, instantiate, Label, Layout, Node, Prefab, Quat, Sprite, tween, UIOpacity, v3, Vec3 } from 'cc';
 import { GameManager } from './GameManager';
 import { KeyControl } from './KeyControl';
 import { Box } from './Box';
@@ -59,6 +59,14 @@ export class WordPuzzle extends Component {
     @property({ type: Node, tooltip: "Nút bấm các vật phẩm 3" })
     protected iconItem3: Node = null;
 
+    @property({ type: Label, tooltip: "Số trang hiện tại" })
+    protected labelPage: Label = null;
+
+    @property({ type: Node, tooltip: "Nút bấm chuyển trang" })
+    protected btnNextPage: Node = null;
+    @property({ type: Node, tooltip: "Nút bấm quay lại trang" })
+    protected btnPrevPage: Node = null;
+
     private isGameover: boolean = false;
     private numTime;
     private numScore;
@@ -75,9 +83,18 @@ export class WordPuzzle extends Component {
     private onItem2: boolean = false;
     private onItem3: boolean = false;
     private numItemUse: number[] = [0, 0, 0]; // Số lần dùng item
-    private save: number[];
+    private donePage: boolean[] = []; // Trạng thái trang game
 
     private comboWords: number = 0;
+
+    private gamePages: any[] = []; // Lưu 3 bộ dữ liệu game
+    private currentPage: number = 0; // Trang hiện tại
+    private pageStates: {
+        filledMatrix: string[][],
+        openedAllLetters: boolean[],
+        wordReaded: string[]
+    }[] = [];
+
 
     onLoad(): void {
         WordPuzzle.Instance = this;
@@ -104,49 +121,86 @@ export class WordPuzzle extends Component {
         this.iconItem1.getChildByPath(`num`).getComponent(Label).string = `x${this.numItemUse[0]}`;
         this.iconItem2.getChildByPath(`num`).getComponent(Label).string = `x${this.numItemUse[1]}`;
         this.iconItem3.getChildByPath(`num`).getComponent(Label).string = `x${this.numItemUse[2]}`;
+
+        this.labelPage.string = `Page: ${this.currentPage + 1}/${this.gamePages.length}`;
+    }
+
+    // Load 3 trang game
+    async loadGamePages() {
+        this.gamePages = [];
+        this.donePage = [];
+        for (let i = 0; i < 3; i++) {
+            const data = { "username": APIManager.userDATA?.username };
+            await new Promise(resolve => {
+                APIManager.requestData('POST', '/getSuggestions', data, res => {
+                    if (!res) {
+                        UIControl.instance.onMess(`Loading game data failed \n. . .\n ${res?.message}`);
+                        GameControl.Instance.openMenu();
+                        return;
+                    }
+                    this.gamePages.push(res);
+                    this.donePage.push(false);
+                    resolve(null);
+                });
+            });
+        }
+        this.resetGame();
     }
 
     // Khởi tạo lại game
     resetGame() {
-        const data = {
-            "username": APIManager.userDATA?.username,
-        };
 
-        APIManager.requestData(`POST`, `/api/getSuggestions`, data, res => {
-            if (res?.error == 201 || !res) {
-                UIControl.instance.onMess(`Loading game data failed \n. . .\n ${res?.message}`);
-                GameControl.Instance.openMenu();
-                return;
-            }
+        // Đặt lại trạng thái game
+        this.currentPage = 0;
+        this.isGameover = false;
+        this.popupGameOver.active = false;
+        this.wordReaded = [];
+        this.numItemUse = [2, 2, 2];
+        this.comboWords = 0;
+        this.numTime = GameManager.data.countdown;
+        this.numScore = GameManager.data.max_score;
 
-            // Cập nhật dữ liệu game
-            this.gameData = res ? res : GameManager.data;
-            this.isDefault = !res;
+        this.loadGamePage(this.currentPage);
 
-            // Đặt lại trạng thái game
-            this.isGameover = false;
-            this.popupGameOver.active = false;
-            this.wordReaded = [];
-            this.numTime = this.gameData.countdown;
-            this.numScore = this.gameData.max_score;
-            this.numItemUse = [2, 2, 2];
-            this.comboWords = 0;
+        // Bắt đầu game và phát âm thanh
+        this.startGame();
+        AudioController.Instance.StartGame();
+    }
 
-            // Reset giao diện layout
-            this.resetUILayout();
 
-            // Xử lý item âm thanh
-            this.dataSound = this.extractGridToWords(this.gameData.answer, this.gameData.keyAnswer);
-            this.OffAllItem();
+    // Load trang game
+    loadGamePage(pageIndex: number) {
+        console.log("Load trang game => ", this.gamePages);
+        if (!this.gamePages[pageIndex]) return;
+        this.btnNextPage.getComponent(UIOpacity).opacity = (pageIndex === this.gamePages.length - 1)? 155 : 255;
+        this.btnPrevPage.getComponent(UIOpacity).opacity = (pageIndex === 0)? 155 : 255;
 
-            // Tạo lại dữ liệu game
-            this.generateAllLetter();
-            this.generateMatrix();
+        // Cập nhật dữ liệu game
+        this.gameData = this.gamePages[pageIndex] ? this.gamePages[pageIndex] : GameManager.data;
+        this.isDefault = !this.gamePages[pageIndex];
 
-            // Bắt đầu game và phát âm thanh
-            this.startGame();
-            AudioController.Instance.StartGame();
-        });
+        // Reset giao diện layout
+        this.resetUILayout();
+
+        // Xử lý item âm thanh
+        this.dataSound = this.extractGridToWords(this.gameData.answer, this.gameData.keyAnswer);
+        this.OffAllItem();
+
+        // Tạo lại dữ liệu game
+        this.generateAllLetter();
+        this.generateMatrix();
+    }
+
+    // Chuyển trang game
+    changePage(event: EventTouch, offset: number) {
+        this.saveCurrentPageState();
+        let newPage = this.currentPage + Number(offset);
+        if (newPage < 0 || newPage >= this.gamePages.length) return;
+        this.currentPage = newPage;
+        this.loadGamePage(this.currentPage);
+
+        this.restorePageState(this.currentPage);
+        console.log("Chuyển trang game => ", this.currentPage);
     }
 
     //======================= BỘ KHỞI TẠO =========================//
@@ -217,7 +271,7 @@ export class WordPuzzle extends Component {
             let letter = instantiate(this.targetBox);
             letter.name = `Letter_${i}`;
             letter[`keyCode`] = item;
-            letter.getComponent(Box).chanceImage(1);
+            letter.getComponent(Box).chanceImage(3);
             letter.getChildByPath(`Label`).getComponent(Label).string = item;
 
             letter.off(`click`);
@@ -282,7 +336,7 @@ export class WordPuzzle extends Component {
             if (char.trim() !== '') {
                 // Thiết lập hình ảnh cho box theo ký tự
                 const boxComponent = charNode.getComponent(Box);
-                boxComponent.chanceImage(j === this.gameData.keyAnswer ? 2 : 0);
+                boxComponent.chanceImage(j === this.gameData.keyAnswer ? 2 : 1);
 
                 charNode['keyCode'] = char;
                 charNode['pos'] = [rowIndex, j];
@@ -331,8 +385,6 @@ export class WordPuzzle extends Component {
                 break;
             }
         }
-        console.log(">>>firstNonIndex", lastIndex);
-
 
         this.scheduleOnce(() => {
             // Âm thanh theo dòng
@@ -453,7 +505,7 @@ export class WordPuzzle extends Component {
                 "score": this.numScore,
                 "time": this.numTime
             }
-            APIManager.requestData(`POST`, `/api/saveScore`, data, res => {
+            APIManager.requestData(`POST`, `/saveScore`, data, res => {
                 console.log("Kết thúc game => Gửi server:", res);
 
                 // // Sự kiện BATTA
@@ -489,7 +541,7 @@ export class WordPuzzle extends Component {
             //     "score": 0,
             //     "time": 0
             // }
-            APIManager.requestData(`POST`, `/api/saveScore`, data, res => {
+            APIManager.requestData(`POST`, `/saveScore`, data, res => {
                 console.log("Thoát game => Gửi server:", res);
             });
         }
@@ -690,7 +742,8 @@ export class WordPuzzle extends Component {
             });
         });
 
-        if (allRevealed) {
+        this.donePage[this.currentPage] = allRevealed;
+        if (this.donePage.every(done => done)) {
             this.endGame();
         }
     }
@@ -729,7 +782,7 @@ export class WordPuzzle extends Component {
     onReadWord(txt: string) {
         if (window.speechSynthesis) {
             const msg = new SpeechSynthesisUtterance(txt);
-            msg.voice = speechSynthesis.getVoices()[6]; // Giọng đọc
+            msg.voice = speechSynthesis.getVoices()[1]; // Giọng đọc
             msg.lang = 'en-US'; // Ngôn ngữ tiếng Anh
             msg.volume = 1; // Âm lượng (0-1)
             msg.rate = 0.8; // Tốc độ đọc (0.1-10)
@@ -764,7 +817,7 @@ export class WordPuzzle extends Component {
     private updateTimeLabel() {
         const minutes = Math.floor(this.numTime / 60);
         const seconds = this.numTime % 60;
-        this.timeLabel.string = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+        this.timeLabel.string = `${minutes < 10 ? '0' : ''}${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
 
         // Chạy hiệu ứng nháy đỏ
         if (this.numTime <= 9) {
@@ -799,8 +852,8 @@ export class WordPuzzle extends Component {
         const bonusLabel = bonusNode.addComponent(Label);
         bonusLabel.string = bonus >= 0 ? `+${bonus}` : `${bonus}`;
         bonusLabel.color = bonus >= 0 ? new Color(0, 255, 0) : new Color(255, 0, 0);
-        bonusLabel.fontSize = 40;
-        bonusLabel.lineHeight = 50;
+        bonusLabel.fontSize = 35;
+        bonusLabel.lineHeight = 40;
         bonusLabel.isBold = true;
         bonusLabel.enableOutline = true;
         bonusLabel.outlineColor = new Color(255, 255, 255);
@@ -986,6 +1039,91 @@ export class WordPuzzle extends Component {
         }
     }
 
+    // Lưu trạng thái game
+    saveCurrentPageState() {
+        // 1. Lưu các chữ đã điền vào ma trận
+        const filledMatrix = this.layoutTargetWord.children.map(row =>
+            row.children.map(cell => {
+                const labelNode = cell.getChildByPath('Label');
+                return labelNode ? labelNode.getComponent(Label).string : '';
+            })
+        );
+
+        // 2. Lưu trạng thái AllLetter đã mở (giả sử mở là đã bị disable click hoặc đã đổi hình)
+        const openedAllLetters: boolean[] = [];
+        this.layoutAllLetters.forEach(layout => {
+            layout.children.forEach(child => {
+                openedAllLetters.push(!child.hasEventListener('click'));
+            });
+        });
+
+        // 3. Lưu các từ đã đọc bằng item
+        const wordReaded = [...this.wordReaded];
+
+        this.pageStates[this.currentPage] = {
+            filledMatrix,
+            openedAllLetters,
+            wordReaded
+        };
+        console.log("Lưu trạng thái game => ", this.pageStates);
+    }
+
+    // Khôi phục trạng thái game
+    restorePageState(pageIndex: number) {
+        const state = this.pageStates[pageIndex];
+        if (!state) return;
+
+        // 1. Khôi phục các chữ đã điền vào ma trận
+        this.layoutTargetWord.children.forEach((row, i) => {
+            row.children.forEach((cell, j) => {
+                const labelNode = cell.getChildByPath('Label');
+                if (labelNode) {
+                    const text = state.filledMatrix?.[i]?.[j] || '';
+                    labelNode.getComponent(Label).string = text;
+                    if (text) {
+                        cell.off('click');
+                    }
+                }
+            });
+        });
+
+        // 2. Khôi phục trạng thái AllLetter đã mở
+        let idx = 0;
+        this.layoutAllLetters.forEach(layout => {
+            layout.children.forEach(child => {
+                if (state.openedAllLetters?.[idx]) {
+                    child.off('click');
+                    child.getComponent(Box)?.chanceImage(0);
+                }
+                idx++;
+            });
+        });
+
+        // 3. Khôi phục các từ đã đọc bằng item
+        this.wordReaded = [...(state.wordReaded || [])];
+        this.scheduleOnce(() => {
+            const allSoundNodes: Node[] = this.soundOff.children.map((child, i) => {
+                return child;
+            });
+            console.log("Khôi phục trạng thái game => ", allSoundNodes);
+            allSoundNodes.forEach(soundNode => {
+                // Tên node có dạng: `${item.name}_${word}`
+                const nameParts = soundNode.name.split('_');
+                const word = nameParts[nameParts.length - 1];
+                if (this.wordReaded.indexOf(word) !== -1) {
+                    soundNode.parent = this.soundOn;
+                    soundNode.active = true;
+                    const sprite = soundNode.getComponent(Sprite);
+                    if (sprite) sprite.grayscale = false;
+                } else {
+                    soundNode.active = false;
+                    const sprite = soundNode.getComponent(Sprite);
+                    if (sprite) sprite.grayscale = true;
+                }
+            });
+
+        }, 0.005)
+    }
 }
 
 

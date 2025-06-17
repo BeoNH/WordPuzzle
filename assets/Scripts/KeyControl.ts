@@ -42,7 +42,7 @@ export class KeyControl extends Component {
         const isKeyColumn = (col === keyAnswer);
 
         // Xác định imageIndex dựa trên trạng thái onBox và vị trí key
-        const imageIndex = onBox ? (isKeyColumn ? 4 : 3) : (isKeyColumn ? 2 : 0);
+        const imageIndex = onBox ? (isKeyColumn ? 4 : 3) : (isKeyColumn ? 2 : 1);
 
         box.getComponent(Box).chanceImage(imageIndex);
     }

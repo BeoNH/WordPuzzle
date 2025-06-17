@@ -24,7 +24,7 @@ export class popupRank extends Component {
     }
 
     initRankingList() {
-        const url = `/api/getRankList`;
+        const url = `/getRankList`;
         const data = {
             "username": APIManager.userDATA?.username,
             // "username": "beonh123",

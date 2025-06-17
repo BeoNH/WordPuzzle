@@ -17,7 +17,7 @@ export class GameManager extends Component {
             [' ', ' ', ' ', ' ', 'T', 'H', 'R', 'O', 'N', 'E']
         ],
         keyAnswer: 4, // cột thứ 5 là khoá chính
-        countdown: 1800, // thời gian đếm ngược
+        countdown: 300, // thời gian đếm ngược
         max_score: 1000, // Điểm tối đa
     }
 
